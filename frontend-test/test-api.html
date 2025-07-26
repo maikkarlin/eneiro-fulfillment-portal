@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Eneiro API Test</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            margin: 20px; 
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button { 
+            margin: 5px; 
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        pre { 
+            background: #f0f0f0; 
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .token-info {
+            background: #e8f4f8;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #b8e0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Eneiro Fulfillment API Test</h1>
+        
+        <div class="token-info">
+            <strong>Token Status:</strong> <span id="tokenStatus">Nicht eingeloggt</span>
+            <button onclick="clearToken()" style="background: #dc3545; float: right;">Token löschen</button>
+        </div>
+        
+        <h3>1️⃣ Kunde prüfen</h3>
+        <input type="text" id="customerNumber" value="486923" placeholder="Kundennummer">
+        <button onclick="checkCustomer()">Kunde prüfen</button>
+        
+        <h3>2️⃣ Registrieren</h3>
+        <input type="email" id="email" placeholder="E-Mail" value="test@example.com">
+        <input type="password" id="password" placeholder="Passwort" value="Test123456">
+        <button onclick="register()">Account erstellen</button>
+        
+        <h3>3️⃣ Anmelden</h3>
+        <button onclick="login()">Login testen</button>
+        
+        <h3>📋 Response:</h3>
+        <pre id="response">Klicke einen Button um zu starten...</pre>
+    </div>
+
+    <script>
+        const API = 'http://localhost:5000/api/auth';
+        let currentKunde = null;
+
+        // Token-Status prüfen
+        function updateTokenStatus() {
+            const token = localStorage.getItem('token');
+            const tokenStatus = document.getElementById('tokenStatus');
+            if (token) {
+                tokenStatus.textContent = '✅ Token vorhanden';
+                tokenStatus.className = 'success';
+            } else {
+                tokenStatus.textContent = '❌ Kein Token';
+                tokenStatus.className = 'error';
+            }
+        }
+
+        updateTokenStatus();
+
+        function clearToken() {
+            localStorage.removeItem('token');
+            updateTokenStatus();
+            alert('Token gelöscht!');
+        }
+
+        async function checkCustomer() {
+            try {
+                const customerNumber = document.getElementById('customerNumber').value;
+                const res = await fetch(API + '/check-customer', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({customerNumber: customerNumber})
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    currentKunde = data.customer;
+                    showResponse(data, 'success');
+                } else {
+                    showResponse(data, 'error');
+                }
+            } catch (error) {
+                showResponse({error: error.message}, 'error');
+            }
+        }
+
+        async function register() {
+            if (!currentKunde) {
+                alert('Bitte erst einen Kunden prüfen!');
+                return;
+            }
+            
+            try {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                const res = await fetch(API + '/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        kKunde: currentKunde.kKunde,
+                        email: email,
+                        password: password
+                    })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showResponse(data, 'success');
+                } else {
+                    showResponse(data, 'error');
+                }
+            } catch (error) {
+                showResponse({error: error.message}, 'error');
+            }
+        }
+
+        async function login() {
+            try {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                const res = await fetch(API + '/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showResponse(data, 'success');
+                    if (data.token) {
+                        localStorage.setItem('token', data.token);
+                        updateTokenStatus();
+                        console.log('✅ Token gespeichert!');
+                        alert('Login erfolgreich! Token wurde gespeichert. Du kannst jetzt test-dashboard.html öffnen.');
+                    }
+                } else {
+                    showResponse(data, 'error');
+                }
+            } catch (error) {
+                showResponse({error: error.message}, 'error');
+            }
+        }
+
+        function showResponse(data, type) {
+            const pre = document.getElementById('response');
+            pre.textContent = JSON.stringify(data, null, 2);
+            pre.className = type;
+        }
+    </script>
+</body>
+</html>
