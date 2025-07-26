@@ -147,41 +147,56 @@ router.get('/orders-history', authenticateToken, async (req, res) => {
   }
 });
 
-// Test-Endpoint: Zeige Beispiel-Bestellungen
-router.get('/test-orders', authenticateToken, async (req, res) => {
+// ===== NEUE ROUTEN FÜR ITEMIZED RECORDS =====
+
+// Verfügbare Monate für Einzelverbindungsnachweis abrufen
+router.get('/available-months', authenticateToken, async (req, res) => {
   try {
     const pool = await getConnection();
     const kKunde = req.user.kKunde;
     
+    console.log('Lade verfügbare Monate für Kunde:', kKunde);
+    
     const result = await pool.request()
       .input('kKunde', sql.Int, kKunde)
       .query(`
-        SELECT TOP 10
-          b.kBestellung,
-          b.cBestellNr,
-          b.dErstellt,
-          b.dVersandt,
-          b.dBezahlt,
-          b.cStatus,
-          b.nStorno,
-          k.cKundenNr,
-          k.cFirma
-        FROM tBestellung b
-        INNER JOIN tKunde k ON b.tKunde_kKunde = k.kKunde
+        SELECT 
+          YEAR(v.dErstellt) as year,
+          MONTH(v.dErstellt) as month,
+          COUNT(*) as count
+        FROM tVersand v
+        INNER JOIN tLieferschein l ON v.kLieferschein = l.kLieferschein
+        INNER JOIN tBestellung b ON l.kBestellung = b.kBestellung
         WHERE b.tKunde_kKunde = @kKunde
-        ORDER BY b.dErstellt DESC
+          AND v.dErstellt >= DATEADD(month, -12, GETDATE())
+        GROUP BY YEAR(v.dErstellt), MONTH(v.dErstellt)
+        ORDER BY YEAR(v.dErstellt) DESC, MONTH(v.dErstellt) DESC
       `);
     
-    res.json({
-      customerNumber: req.user.customerNumber,
-      kKunde: kKunde,
-      orderCount: result.recordset.length,
-      orders: result.recordset
+    const months = result.recordset.map(row => {
+      const year = row.year;
+      const month = row.month;
+      const monthNames = [
+        'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+        'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+      ];
+      
+      return {
+        value: `${year}-${String(month).padStart(2, '0')}`,
+        label: `${monthNames[month - 1]} ${year}`,
+        count: row.count
+      };
     });
     
+    console.log('Verfügbare Monate:', months);
+    res.json(months);
+    
   } catch (error) {
-    console.error('Test orders error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Available months error:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Laden der verfügbaren Monate',
+      details: error.message 
+    });
   }
 });
 
@@ -197,7 +212,7 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
     
     console.log(`Lade Einzelverbindungsnachweis für Kunde ${kKunde}, Monat: ${month}`);
     
-    // Versanddaten abrufen - VEREINFACHTE QUERY
+    // Versanddaten abrufen
     const result = await pool.request()
       .input('kKunde', sql.Int, kKunde)
       .input('year', sql.Int, parseInt(year))
@@ -215,7 +230,11 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
             ELSE 'Standard'
           END as versanddienstleister,
           ISNULL(v.fGewicht, 0) as gewicht,
-          0.0 as versandkosten,  -- Später können wir das berechnen
+          CASE 
+            WHEN v.kVersandArt = 41 THEN 4.99  -- DHL Standard
+            WHEN v.kVersandArt = 85 THEN 2.70  -- Deutsche Post
+            ELSE 3.50  -- Fallback
+          END as versandkosten,
           b.cBestellNr as bestellNummer,
           b.cInetBestellNr as shopBestellNummer,
           a.cFirma as empfaengerFirma,
@@ -268,6 +287,44 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
       error: 'Fehler beim Laden des Einzelverbindungsnachweises',
       details: error.message 
     });
+  }
+});
+
+// Test-Endpoint: Zeige Beispiel-Bestellungen
+router.get('/test-orders', authenticateToken, async (req, res) => {
+  try {
+    const pool = await getConnection();
+    const kKunde = req.user.kKunde;
+    
+    const result = await pool.request()
+      .input('kKunde', sql.Int, kKunde)
+      .query(`
+        SELECT TOP 10
+          b.kBestellung,
+          b.cBestellNr,
+          b.dErstellt,
+          b.dVersandt,
+          b.dBezahlt,
+          b.cStatus,
+          b.nStorno,
+          k.cKundenNr,
+          k.cFirma
+        FROM tBestellung b
+        INNER JOIN tKunde k ON b.tKunde_kKunde = k.kKunde
+        WHERE b.tKunde_kKunde = @kKunde
+        ORDER BY b.dErstellt DESC
+      `);
+    
+    res.json({
+      customerNumber: req.user.customerNumber,
+      kKunde: kKunde,
+      orderCount: result.recordset.length,
+      orders: result.recordset
+    });
+    
+  } catch (error) {
+    console.error('Test orders error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
