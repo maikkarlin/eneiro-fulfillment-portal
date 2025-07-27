@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { dashboardAPI } from '../services/api';
 import { 
   Download, Calendar, Package, Truck, 
-  FileText, Loader, Filter
+  FileText, Loader, Filter, User, MapPin,
+  ShoppingCart, Euro, Hash, Calendar as CalendarIcon,
+  Send, Scale, Box
 } from 'lucide-react';
 import './ItemizedRecords.css';
 
@@ -50,7 +52,8 @@ function ItemizedRecords() {
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'EUR',
+      minimumFractionDigits: 2
     }).format(value || 0);
   };
 
@@ -69,26 +72,40 @@ function ItemizedRecords() {
     });
   };
 
+  const formatWeight = (weight) => {
+    return `${(weight || 0).toFixed(2)} kg`;
+  };
+
+  // CSV Export mit ALLEN Spalten
   const exportToCSV = () => {
     if (!data || !data.records) return;
 
     const headers = [
-      'Datum', 'Uhrzeit', 'Bestellnummer', 'Tracking', 'Versanddienstleister',
-      'Pakete', 'Gewicht (kg)', 'Kosten (EUR)', 'Empfänger', 'Ort', 'Land'
+      'LSVorname', 'LSName', 'Lieferland', 'Erstelldatum', 'Auftragsnummer', 
+      'ExterneAuftragsnummer', 'Versanddatum', 'Sendungsnummer', 'Gewicht',
+      'Karton', 'Kartonbreite', 'Kartonhöhe', 'Kartonlänge', 'Kartonpreis', 
+      'Versandart', 'AnzahlPicks', 'AnzahlPaket', 'VKKosten'
     ];
 
     const rows = data.records.map(r => [
-      formatDate(r.datum),
-      formatTime(r.datum),
-      r.bestellNummer || '',
-      r.trackingNummer || '',
-      r.versanddienstleister || '',
-      r.anzahlPakete || '0',
-      (r.gewicht || 0).toFixed(2).replace('.', ','),
-      (r.versandkosten || 0).toFixed(2).replace('.', ','),
-      `${r.empfaengerName || ''} ${r.empfaengerFirma || ''}`.trim(),
-      r.empfaengerOrt || '',
-      r.empfaengerLand || ''
+      r.LSVorname || '',
+      r.LSName || '',
+      r.Lieferland || '',
+      formatDate(r.Erstelldatum),
+      r.Auftragsnummer || '',
+      r.ExterneAuftragsnummer || '',
+      formatDate(r.Versanddatum),
+      r.Sendungsnummer || '',
+      (r.Gewicht || 0).toFixed(2).replace('.', ','),
+      r.Karton || '',
+      (r.Kartonbreite || 0).toString().replace('.', ','),
+      (r.Kartonhöhe || 0).toString().replace('.', ','),
+      (r.Kartonlänge || 0).toString().replace('.', ','),
+      (r.Kartonpreis || 0).toFixed(2).replace('.', ','),
+      r.Versandart || '',
+      (r.AnzahlPicks || 0).toString(),
+      (r.AnzahlPaket || 0).toString(),
+      (r.VKKosten || 0).toFixed(2).replace('.', ',')
     ]);
 
     const csvContent = [
@@ -161,94 +178,201 @@ function ItemizedRecords() {
         <>
           {activeTab === 'table' && data && (
             <div className="records-table-container">
-              <table className="records-table">
-                <thead>
-                  <tr>
-                    <th>Datum</th>
-                    <th>Uhrzeit</th>
-                    <th>Bestellnr.</th>
-                    <th>Tracking</th>
-                    <th>Versandart</th>
-                    <th>Pakete</th>
-                    <th>Gewicht</th>
-                    <th>Kosten</th>
-                    <th>Empfänger</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.records.map((record, index) => (
-                    <tr key={index}>
-                      <td>{formatDate(record.datum)}</td>
-                      <td>{formatTime(record.datum)}</td>
-                      <td className="order-number">{record.bestellNummer}</td>
-                      <td className="tracking-number">{record.trackingNummer || '-'}</td>
-                      <td>
-                        <span className="carrier-badge">
-                          <Truck size={14} />
-                          {record.versanddienstleister || 'Unbekannt'}
-                        </span>
-                      </td>
-                      <td className="text-center">{record.anzahlPakete || 0}</td>
-                      <td className="text-right">{(record.gewicht || 0).toFixed(2)} kg</td>
-                      <td className="text-right cost">{formatCurrency(record.versandkosten)}</td>
-                      <td>
-                        <div className="recipient">
-                          <div>{record.empfaengerName || record.empfaengerFirma}</div>
-                          <div className="recipient-location">
-                            {record.empfaengerOrt}
-                          </div>
-                        </div>
-                      </td>
+              <div className="table-scroll">
+                <table className="records-table compact">
+                  <thead>
+                    <tr>
+                      <th className="customer-info">
+                        <User size={16} />
+                        Empfänger
+                      </th>
+                      <th className="location">
+                        <MapPin size={16} />
+                        Land
+                      </th>
+                      <th className="date">
+                        <CalendarIcon size={16} />
+                        Erstellt
+                      </th>
+                      <th className="order-info">
+                        <ShoppingCart size={16} />
+                        Aufträge
+                      </th>
+                      <th className="shipping-date">
+                        <Send size={16} />
+                        Versandt
+                      </th>
+                      <th className="tracking">
+                        <Hash size={16} />
+                        Sendung
+                      </th>
+                      <th className="weight">
+                        <Scale size={16} />
+                        Gewicht
+                      </th>
+                      <th className="box-info">
+                        <Box size={16} />
+                        Karton
+                      </th>
+                      <th className="shipping-method">
+                        <Truck size={16} />
+                        Versandart
+                      </th>
+                      <th className="picks">
+                        Picks
+                      </th>
+                      <th className="packages">
+                        Pakete
+                      </th>
+                      <th className="cost">
+                        <Euro size={16} />
+                        Kosten
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.records.map((record, index) => (
+                      <tr key={index} className={index % 2 === 0 ? 'even' : 'odd'}>
+                        <td className="customer-info">
+                          <div className="customer-name">
+                            <strong>{record.LSVorname} {record.LSName}</strong>
+                            {record.LSFirma && record.LSFirma !== 'NULL' && (
+                              <div className="company-name">{record.LSFirma}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="location">
+                          <span className="country-badge">{record.Lieferland}</span>
+                        </td>
+                        <td className="date">
+                          <div className="date-info">
+                            <div className="date-primary">{formatDate(record.Erstelldatum)}</div>
+                            <div className="time-secondary">{formatTime(record.Erstelldatum)}</div>
+                          </div>
+                        </td>
+                        <td className="order-info">
+                          <div className="order-numbers">
+                            <div className="order-primary">{record.Auftragsnummer}</div>
+                            {record.ExterneAuftragsnummer && (
+                              <div className="order-secondary">{record.ExterneAuftragsnummer}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="shipping-date">
+                          <div className="date-primary">{formatDate(record.Versanddatum)}</div>
+                        </td>
+                        <td className="tracking">
+                          <div className="tracking-number">{record.Sendungsnummer || '-'}</div>
+                        </td>
+                        <td className="weight">
+                          <span className="weight-value">{formatWeight(record.Gewicht)}</span>
+                        </td>
+                        <td className="box-info">
+                          <div className="box-details">
+                            <div className="box-name">{record.Karton}</div>
+                            <div className="box-price">{formatCurrency(record.Kartonpreis)}</div>
+                          </div>
+                        </td>
+                        <td className="shipping-method">
+                          <span className="carrier-badge">
+                            <Truck size={14} />
+                            {record.Versandart}
+                          </span>
+                        </td>
+                        <td className="picks text-center">
+                          <span className="picks-count">{record.AnzahlPicks || 0}</span>
+                        </td>
+                        <td className="packages text-center">
+                          <span className="package-count">{record.AnzahlPaket || 0}</span>
+                        </td>
+                        <td className="cost">
+                          <span className="cost-value">{formatCurrency(record.VKKosten)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {activeTab === 'summary' && data && (
-            <div className="summary-grid">
-              <div className="summary-card">
-                <div className="summary-icon">
-                  <Package />
+            <div className="summary-container">
+              <div className="summary-grid">
+                <div className="summary-card">
+                  <div className="summary-icon packages">
+                    <Package />
+                  </div>
+                  <div className="summary-content">
+                    <h3>Gesamtanzahl Pakete</h3>
+                    <p className="summary-value">{data.summary.totalPackages}</p>
+                  </div>
                 </div>
-                <div className="summary-content">
-                  <h3>Gesamtanzahl Sendungen</h3>
-                  <p className="summary-value">{data.summary.totalPackages}</p>
+
+                <div className="summary-card">
+                  <div className="summary-icon weight">
+                    <Scale />
+                  </div>
+                  <div className="summary-content">
+                    <h3>Gesamtgewicht</h3>
+                    <p className="summary-value">{formatWeight(data.summary.totalWeight)}</p>
+                  </div>
+                </div>
+
+                <div className="summary-card">
+                  <div className="summary-icon picks">
+                    <Box />
+                  </div>
+                  <div className="summary-content">
+                    <h3>Gesamtanzahl Picks</h3>
+                    <p className="summary-value">{data.summary.totalPicks}</p>
+                    <p className="summary-sub">{formatCurrency(data.summary.totalPickCosts)} Kosten</p>
+                  </div>
+                </div>
+
+                <div className="summary-card">
+                  <div className="summary-icon cost">
+                    <Euro />
+                  </div>
+                  <div className="summary-content">
+                    <h3>Versandkosten gesamt</h3>
+                    <p className="summary-value">{formatCurrency(data.summary.totalCost)}</p>
+                  </div>
+                </div>
+
+                <div className="summary-card">
+                  <div className="summary-icon boxes">
+                    <Package />
+                  </div>
+                  <div className="summary-content">
+                    <h3>Kartonkosten gesamt</h3>
+                    <p className="summary-value">{formatCurrency(data.summary.totalBoxCosts)}</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="summary-card">
-                <div className="summary-icon">
-                  <Truck />
-                </div>
-                <div className="summary-content">
-                  <h3>Gesamtgewicht</h3>
-                  <p className="summary-value">{data.summary.totalWeight.toFixed(2)} kg</p>
-                </div>
-              </div>
-
-              <div className="summary-card">
-                <div className="summary-icon">
-                  <FileText />
-                </div>
-                <div className="summary-content">
-                  <h3>Versandkosten gesamt</h3>
-                  <p className="summary-value">{formatCurrency(data.summary.totalCost)}</p>
-                </div>
-              </div>
-
-              <div className="summary-card full-width">
+              <div className="carrier-breakdown">
                 <h3>Verteilung nach Versanddienstleister</h3>
-                <div className="carrier-distribution">
+                <div className="carrier-grid">
                   {Object.entries(data.summary.byCarrier).map(([carrier, stats]) => (
-                    <div key={carrier} className="carrier-row">
-                      <div className="carrier-info">
-                        <span className="carrier-name">{carrier}</span>
-                        <span className="carrier-count">{stats.count} Sendungen</span>
+                    <div key={carrier} className="carrier-card">
+                      <div className="carrier-header">
+                        <Truck size={20} />
+                        <h4>{carrier}</h4>
                       </div>
-                      <div className="carrier-cost">
-                        {formatCurrency(stats.cost)}
+                      <div className="carrier-stats">
+                        <div className="stat">
+                          <span className="label">Sendungen:</span>
+                          <span className="value">{stats.count}</span>
+                        </div>
+                        <div className="stat">
+                          <span className="label">Pakete:</span>
+                          <span className="value">{stats.packages}</span>
+                        </div>
+                        <div className="stat">
+                          <span className="label">Kosten:</span>
+                          <span className="value">{formatCurrency(stats.cost)}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
