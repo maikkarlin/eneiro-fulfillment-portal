@@ -1,123 +1,209 @@
 import React, { useState, useEffect } from 'react';
-import { dashboardAPI } from '../services/api';
 import { 
-  Download, Calendar, Package, Truck, 
-  FileText, Loader, Filter, User, MapPin,
-  ShoppingCart, Euro, Hash, Calendar as CalendarIcon,
-  Send, Scale, Box
+  Calendar, 
+  Download, 
+  RefreshCw, 
+  Package, 
+  Weight, 
+  DollarSign, 
+  Truck,
+  Archive
 } from 'lucide-react';
+import { dashboardAPI } from '../services/api';
 import './ItemizedRecords.css';
 
-function ItemizedRecords() {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(null);
+const ItemizedRecords = () => {
+  const [loading, setLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('');
   const [availableMonths, setAvailableMonths] = useState([]);
-  const [activeTab, setActiveTab] = useState('table');
+  const [records, setRecords] = useState([]);
+  const [summary, setSummary] = useState({});
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadAvailableMonths();
   }, []);
 
-  useEffect(() => {
-    if (selectedMonth || availableMonths.length > 0) {
-      loadItemizedRecords();
-    }
-  }, [selectedMonth]);
-
   const loadAvailableMonths = async () => {
     try {
       const response = await dashboardAPI.getAvailableMonths();
       setAvailableMonths(response.data);
-      if (response.data.length > 0 && !selectedMonth) {
-        setSelectedMonth(response.data[0].value);
+      
+      // Automatisch aktuellen Monat auswählen
+      if (response.data.length > 0) {
+        const currentMonth = response.data[0].value;
+        setSelectedMonth(currentMonth);
+        loadRecords(currentMonth);
       }
-    } catch (error) {
-      console.error('Fehler beim Laden der Monate:', error);
+    } catch (err) {
+      console.error('Fehler beim Laden der verfügbaren Monate:', err);
+      setError('Fehler beim Laden der verfügbaren Monate');
     }
   };
 
-  const loadItemizedRecords = async () => {
+  const loadRecords = async (month = selectedMonth) => {
+    if (!month) return;
+    
     try {
       setLoading(true);
-      const response = await dashboardAPI.getItemizedRecords(selectedMonth);
-      setData(response.data);
-    } catch (error) {
-      console.error('Fehler beim Laden der Daten:', error);
+      setError(null);
+      
+      const response = await dashboardAPI.getItemizedRecords(month);
+      setRecords(response.data.records || []);
+      setSummary(response.data.summary || {});
+      
+    } catch (err) {
+      console.error('Fehler beim Laden der Daten:', err);
+      setError('Fehler beim Laden des Einzelverbindungsnachweises');
+      setRecords([]);
+      setSummary({});
     } finally {
       setLoading(false);
     }
   };
 
+  const handleMonthChange = (month) => {
+    setSelectedMonth(month);
+    loadRecords(month);
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2
+      currency: 'EUR'
     }).format(value || 0);
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat('de-DE').format(value || 0);
   };
 
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('de-DE', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatWeight = (value) => {
+    if (!value) return '0 kg';
+    return value < 1 ? `${(value * 1000).toFixed(0)} g` : `${value.toFixed(2)} kg`;
   };
 
-  const formatWeight = (weight) => {
-    return `${(weight || 0).toFixed(2)} kg`;
-  };
-
-  // CSV Export mit ALLEN Spalten
   const exportToCSV = () => {
-    if (!data || !data.records) return;
-
+    if (records.length === 0) return;
+    
     const headers = [
-      'LSVorname', 'LSName', 'Lieferland', 'Erstelldatum', 'Auftragsnummer', 
-      'ExterneAuftragsnummer', 'Versanddatum', 'Sendungsnummer', 'Gewicht',
-      'Karton', 'Kartonbreite', 'Kartonhöhe', 'Kartonlänge', 'Kartonpreis', 
-      'Versandart', 'AnzahlPicks', 'AnzahlPaket', 'VKKosten'
+      'Datum',
+      'Auftragsnummer',
+      'Artikelnummer',
+      'Artikelname',
+      'Anzahl',
+      'Gewicht',
+      'Versandart',
+      'Kosten',
+      'Paketanzahl'
     ];
-
-    const rows = data.records.map(r => [
-      r.LSVorname || '',
-      r.LSName || '',
-      r.Lieferland || '',
-      formatDate(r.Erstelldatum),
-      r.Auftragsnummer || '',
-      r.ExterneAuftragsnummer || '',
-      formatDate(r.Versanddatum),
-      r.Sendungsnummer || '',
-      (r.Gewicht || 0).toFixed(2).replace('.', ','),
-      r.Karton || '',
-      (r.Kartonbreite || 0).toString().replace('.', ','),
-      (r.Kartonhöhe || 0).toString().replace('.', ','),
-      (r.Kartonlänge || 0).toString().replace('.', ','),
-      (r.Kartonpreis || 0).toFixed(2).replace('.', ','),
-      r.Versandart || '',
-      (r.AnzahlPicks || 0).toString(),
-      (r.AnzahlPaket || 0).toString(),
-      (r.VKKosten || 0).toFixed(2).replace('.', ',')
-    ]);
-
+    
     const csvContent = [
       headers.join(';'),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(';'))
+      ...records.map(record => [
+        record.Versanddatum || '',
+        record.Auftragsnummer || '',
+        record.Artikelnummer || '',
+        record.Artikelname || '',
+        record.Anzahl || 0,
+        record.Gewicht || 0,
+        record.Versandart || '',
+        (record.VKKosten || 0).toString().replace('.', ','),
+        record.AnzahlPaket || 0
+      ].join(';'))
     ].join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Einzelverbindungsnachweis_${selectedMonth}.csv`;
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `einzelverbindungsnachweis_${selectedMonth}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderSummary = () => {
+    if (!summary.total) return null;
+
+    return (
+      <div className="summary-grid">
+        <div className="summary-card">
+          <div className="summary-icon weight">
+            <Weight size={20} />
+          </div>
+          <div className="summary-content">
+            <h3>Gesamtgewicht</h3>
+            <p className="summary-value">{formatWeight(summary.total.weight)}</p>
+          </div>
+        </div>
+        
+        <div className="summary-card">
+          <div className="summary-icon picks">
+            <Package size={20} />
+          </div>
+          <div className="summary-content">
+            <h3>Versendete Artikel</h3>
+            <p className="summary-value">{formatNumber(summary.total.picks)}</p>
+          </div>
+        </div>
+        
+        <div className="summary-card">
+          <div className="summary-icon cost">
+            <DollarSign size={20} />
+          </div>
+          <div className="summary-content">
+            <h3>Versandkosten</h3>
+            <p className="summary-value">{formatCurrency(summary.total.cost)}</p>
+          </div>
+        </div>
+        
+        <div className="summary-card">
+          <div className="summary-icon boxes">
+            <Archive size={20} />
+          </div>
+          <div className="summary-content">
+            <h3>Pakete</h3>
+            <p className="summary-value">{formatNumber(summary.total.packages)}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCarrierBreakdown = () => {
+    if (!summary.byCarrier || Object.keys(summary.byCarrier).length === 0) return null;
+
+    return (
+      <div className="carrier-breakdown">
+        <h3>Aufschlüsselung nach Versanddienstleister</h3>
+        <div className="carrier-grid">
+          {Object.entries(summary.byCarrier).map(([carrier, data]) => (
+            <div key={carrier} className="carrier-card">
+              <div className="carrier-header">
+                <Truck size={16} />
+                <h4>{carrier}</h4>
+              </div>
+              <div className="carrier-stats">
+                <div className="stat">
+                  <span className="label">Sendungen:</span>
+                  <span className="value">{formatNumber(data.count)}</span>
+                </div>
+                <div className="stat">
+                  <span className="label">Kosten:</span>
+                  <span className="value">{formatCurrency(data.cost)}</span>
+                </div>
+                <div className="stat">
+                  <span className="label">Pakete:</span>
+                  <span className="value">{formatNumber(data.packages)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -127,12 +213,13 @@ function ItemizedRecords() {
         
         <div className="header-controls">
           <div className="month-selector">
-            <Calendar size={20} />
+            <Calendar size={16} />
             <select 
               value={selectedMonth} 
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              onChange={(e) => handleMonthChange(e.target.value)}
               disabled={loading}
             >
+              <option value="">Monat auswählen...</option>
               {availableMonths.map(month => (
                 <option key={month.value} value={month.value}>
                   {month.label} ({month.count} Sendungen)
@@ -141,153 +228,77 @@ function ItemizedRecords() {
             </select>
           </div>
           
-          <button 
-            className="export-button" 
-            onClick={exportToCSV}
-            disabled={loading || !data?.records?.length}
-          >
-            <Download size={20} />
-            CSV Export
-          </button>
+          <div className="action-buttons">
+            <button 
+              onClick={() => loadRecords()} 
+              disabled={loading || !selectedMonth}
+              className="refresh-button"
+            >
+              <RefreshCw size={16} className={loading ? 'spinning' : ''} />
+              Aktualisieren
+            </button>
+            
+            <button 
+              onClick={exportToCSV} 
+              disabled={records.length === 0}
+              className="export-button"
+            >
+              <Download size={16} />
+              CSV Export
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="tab-buttons">
-        <button 
-          className={`tab-button ${activeTab === 'table' ? 'active' : ''}`}
-          onClick={() => setActiveTab('table')}
-        >
-          <FileText size={18} />
-          Detailansicht
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'summary' ? 'active' : ''}`}
-          onClick={() => setActiveTab('summary')}
-        >
-          <Filter size={18} />
-          Zusammenfassung
-        </button>
-      </div>
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+          <button onClick={() => loadRecords()}>Erneut versuchen</button>
+        </div>
+      )}
 
-      {loading ? (
+      {loading && (
         <div className="loading-container">
-          <Loader className="loading-spinner" />
-          <p>Daten werden geladen...</p>
+          <RefreshCw className="loading-spinner" />
+          <p>Lade Daten...</p>
         </div>
-      ) : (
+      )}
+
+      {!loading && !error && selectedMonth && (
         <>
-          {activeTab === 'table' && data && (
+          {renderSummary()}
+          {renderCarrierBreakdown()}
+          
+          {records.length > 0 && (
             <div className="records-table-container">
-              <div className="table-scroll">
-                <table className="records-table compact">
+              <h3>Detailaufstellung ({records.length} Einträge)</h3>
+              <div className="table-wrapper">
+                <table className="records-table">
                   <thead>
                     <tr>
-                      <th className="customer-info">
-                        <User size={16} />
-                        Empfänger
-                      </th>
-                      <th className="location">
-                        <MapPin size={16} />
-                        Land
-                      </th>
-                      <th className="date">
-                        <CalendarIcon size={16} />
-                        Erstellt
-                      </th>
-                      <th className="order-info">
-                        <ShoppingCart size={16} />
-                        Aufträge
-                      </th>
-                      <th className="shipping-date">
-                        <Send size={16} />
-                        Versandt
-                      </th>
-                      <th className="tracking">
-                        <Hash size={16} />
-                        Sendung
-                      </th>
-                      <th className="weight">
-                        <Scale size={16} />
-                        Gewicht
-                      </th>
-                      <th className="box-info">
-                        <Box size={16} />
-                        Karton
-                      </th>
-                      <th className="shipping-method">
-                        <Truck size={16} />
-                        Versandart
-                      </th>
-                      <th className="picks">
-                        Picks
-                      </th>
-                      <th className="packages">
-                        Pakete
-                      </th>
-                      <th className="cost">
-                        <Euro size={16} />
-                        Kosten
-                      </th>
+                      <th>Datum</th>
+                      <th>Auftrag</th>
+                      <th>Artikel-Nr.</th>
+                      <th>Artikel</th>
+                      <th>Anzahl</th>
+                      <th>Gewicht</th>
+                      <th>Versandart</th>
+                      <th>Kosten</th>
+                      <th>Pakete</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.records.map((record, index) => (
-                      <tr key={index} className={index % 2 === 0 ? 'even' : 'odd'}>
-                        <td className="customer-info">
-                          <div className="customer-name">
-                            <strong>{record.LSVorname} {record.LSName}</strong>
-                            {record.LSFirma && record.LSFirma !== 'NULL' && (
-                              <div className="company-name">{record.LSFirma}</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="location">
-                          <span className="country-badge">{record.Lieferland}</span>
-                        </td>
-                        <td className="date">
-                          <div className="date-info">
-                            <div className="date-primary">{formatDate(record.Erstelldatum)}</div>
-                            <div className="time-secondary">{formatTime(record.Erstelldatum)}</div>
-                          </div>
-                        </td>
-                        <td className="order-info">
-                          <div className="order-numbers">
-                            <div className="order-primary">{record.Auftragsnummer}</div>
-                            {record.ExterneAuftragsnummer && (
-                              <div className="order-secondary">{record.ExterneAuftragsnummer}</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="shipping-date">
-                          <div className="date-primary">{formatDate(record.Versanddatum)}</div>
-                        </td>
-                        <td className="tracking">
-                          <div className="tracking-number">{record.Sendungsnummer || '-'}</div>
-                        </td>
-                        <td className="weight">
-                          <span className="weight-value">{formatWeight(record.Gewicht)}</span>
-                        </td>
-                        <td className="box-info">
-                          <div className="box-details">
-                            <div className="box-name">{record.Karton}</div>
-                            <div className="box-price">{formatCurrency(record.Kartonpreis)}</div>
-                          </div>
-                        </td>
-                        <td className="shipping-method">
-                          <span className="carrier-badge">
-                            <Truck size={14} />
-                            {record.Versandart}
-                          </span>
-                        </td>
-                        <td className="picks text-center">
-                          <span className="picks-count">{record.AnzahlPicks || 0}</span>
-                        </td>
-                        <td className="packages text-center">
-                          <span className="package-count">{record.AnzahlPaket || 0}</span>
-                        </td>
-                        <td className="cost">
-                          <span className="cost-value">{formatCurrency(record.VKKosten)}</span>
-                        </td>
+                    {records.map((record, index) => (
+                      <tr key={index}>
+                        <td>{record.Versanddatum ? new Date(record.Versanddatum).toLocaleDateString('de-DE') : ''}</td>
+                        <td>{record.Auftragsnummer || ''}</td>
+                        <td>{record.Artikelnummer || ''}</td>
+                        <td className="article-name">{record.Artikelname || ''}</td>
+                        <td className="number">{formatNumber(record.Anzahl)}</td>
+                        <td className="number">{formatWeight(record.Gewicht)}</td>
+                        <td>{record.Versandart || ''}</td>
+                        <td className="currency">{formatCurrency(record.VKKosten)}</td>
+                        <td className="number">{formatNumber(record.AnzahlPaket)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -295,95 +306,18 @@ function ItemizedRecords() {
               </div>
             </div>
           )}
-
-          {activeTab === 'summary' && data && (
-            <div className="summary-container">
-              <div className="summary-grid">
-                <div className="summary-card">
-                  <div className="summary-icon packages">
-                    <Package />
-                  </div>
-                  <div className="summary-content">
-                    <h3>Gesamtanzahl Pakete</h3>
-                    <p className="summary-value">{data.summary.totalPackages}</p>
-                  </div>
-                </div>
-
-                <div className="summary-card">
-                  <div className="summary-icon weight">
-                    <Scale />
-                  </div>
-                  <div className="summary-content">
-                    <h3>Gesamtgewicht</h3>
-                    <p className="summary-value">{formatWeight(data.summary.totalWeight)}</p>
-                  </div>
-                </div>
-
-                <div className="summary-card">
-                  <div className="summary-icon picks">
-                    <Box />
-                  </div>
-                  <div className="summary-content">
-                    <h3>Gesamtanzahl Picks</h3>
-                    <p className="summary-value">{data.summary.totalPicks}</p>
-                    <p className="summary-sub">{formatCurrency(data.summary.totalPickCosts)} Kosten</p>
-                  </div>
-                </div>
-
-                <div className="summary-card">
-                  <div className="summary-icon cost">
-                    <Euro />
-                  </div>
-                  <div className="summary-content">
-                    <h3>Versandkosten gesamt</h3>
-                    <p className="summary-value">{formatCurrency(data.summary.totalCost)}</p>
-                  </div>
-                </div>
-
-                <div className="summary-card">
-                  <div className="summary-icon boxes">
-                    <Package />
-                  </div>
-                  <div className="summary-content">
-                    <h3>Kartonkosten gesamt</h3>
-                    <p className="summary-value">{formatCurrency(data.summary.totalBoxCosts)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="carrier-breakdown">
-                <h3>Verteilung nach Versanddienstleister</h3>
-                <div className="carrier-grid">
-                  {Object.entries(data.summary.byCarrier).map(([carrier, stats]) => (
-                    <div key={carrier} className="carrier-card">
-                      <div className="carrier-header">
-                        <Truck size={20} />
-                        <h4>{carrier}</h4>
-                      </div>
-                      <div className="carrier-stats">
-                        <div className="stat">
-                          <span className="label">Sendungen:</span>
-                          <span className="value">{stats.count}</span>
-                        </div>
-                        <div className="stat">
-                          <span className="label">Pakete:</span>
-                          <span className="value">{stats.packages}</span>
-                        </div>
-                        <div className="stat">
-                          <span className="label">Kosten:</span>
-                          <span className="value">{formatCurrency(stats.cost)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          
+          {records.length === 0 && !loading && selectedMonth && (
+            <div className="no-data">
+              <Package size={48} />
+              <h3>Keine Daten verfügbar</h3>
+              <p>Für den ausgewählten Monat wurden keine Versanddaten gefunden.</p>
             </div>
           )}
         </>
       )}
     </div>
   );
-}
+};
 
 export default ItemizedRecords;

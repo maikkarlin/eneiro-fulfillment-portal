@@ -3,15 +3,20 @@ import {
   BarChart3, 
   Package, 
   TrendingUp, 
+  TrendingDown,
   Clock, 
   LogOut, 
   Menu, 
-  Users,
+  FileText,
   DollarSign,
   Truck,
-  PercentIcon
+  PercentIcon,
+  ArrowUp,
+  ArrowDown,
+  Minus
 } from 'lucide-react';
 import { dashboardAPI } from '../services/api';
+import ItemizedRecords from './ItemizedRecords';
 import './Dashboard.css';
 
 const Dashboard = ({ user, onLogout }) => {
@@ -50,10 +55,23 @@ const Dashboard = ({ user, onLogout }) => {
     return new Intl.NumberFormat('de-DE').format(value);
   };
 
+  const getTrendIcon = (trend) => {
+    if (trend > 0) return <TrendingUp size={16} />;
+    if (trend < 0) return <TrendingDown size={16} />;
+    return <Minus size={16} />;
+  };
+
+  const getTrendClass = (trend) => {
+    if (trend > 0) return 'positive';
+    if (trend < 0) return 'negative';
+    return 'neutral';
+  };
+
   const getKPICards = () => [
     {
       label: 'Bestellungen (Monat)',
       value: formatNumber(kpis.totalOrders || 0),
+      trend: kpis.ordersTrend || 0,
       icon: Package,
       color: '#2a5298',
       bgColor: '#e8f0ff'
@@ -134,6 +152,12 @@ const Dashboard = ({ user, onLogout }) => {
                 <div className="kpi-info">
                   <p className="kpi-label">{kpi.label}</p>
                   <h3 className="kpi-value">{kpi.value}</h3>
+                  {kpi.trend !== undefined && (
+                    <p className={`kpi-trend ${getTrendClass(kpi.trend)}`}>
+                      {getTrendIcon(kpi.trend)}
+                      {Math.abs(kpi.trend)}% vs. Vormonat
+                    </p>
+                  )}
                 </div>
                 <div 
                   className="kpi-icon" 
@@ -156,18 +180,13 @@ const Dashboard = ({ user, onLogout }) => {
     switch (activeView) {
       case 'overview':
         return renderOverview();
+      case 'itemized':
+        return <ItemizedRecords />;
       case 'orders':
         return (
           <div className="content-placeholder">
             <h2>Bestellungen</h2>
             <p>Bestellübersicht wird hier angezeigt...</p>
-          </div>
-        );
-      case 'inventory':
-        return (
-          <div className="content-placeholder">
-            <h2>Lagerbestand</h2>
-            <p>Lagerbestand wird hier angezeigt...</p>
           </div>
         );
       case 'reports':
@@ -195,7 +214,7 @@ const Dashboard = ({ user, onLogout }) => {
               <Menu size={20} />
             </button>
             <img 
-              src="/api/placeholder/120/30" 
+              src="/logo192.png" 
               alt="Logo" 
               className="logo"
             />
@@ -232,18 +251,18 @@ const Dashboard = ({ user, onLogout }) => {
               Übersicht
             </button>
             <button
+              className={`nav-item ${activeView === 'itemized' ? 'active' : ''}`}
+              onClick={() => setActiveView('itemized')}
+            >
+              <FileText />
+              Einzelverbindungsnachweis
+            </button>
+            <button
               className={`nav-item ${activeView === 'orders' ? 'active' : ''}`}
               onClick={() => setActiveView('orders')}
             >
               <Package />
               Bestellungen
-            </button>
-            <button
-              className={`nav-item ${activeView === 'inventory' ? 'active' : ''}`}
-              onClick={() => setActiveView('inventory')}
-            >
-              <Users />
-              Lagerbestand
             </button>
             <button
               className={`nav-item ${activeView === 'reports' ? 'active' : ''}`}
