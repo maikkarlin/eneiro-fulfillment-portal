@@ -222,15 +222,15 @@ const Dashboard = ({ user, onLogout }) => {
             <h1>Fulfillment Portal</h1>
           </div>
           
-          <div className="header-right">
-            {user && (
-              <div className="user-info">
-                <span className="user-name">
-                  {user.cFirma || `${user.cVorname} ${user.cName}`}
-                </span>
-                <span className="user-number">Kunde: {user.cKundenNr}</span>
-              </div>
-            )}
+<div className="header-right">
+  {user && (
+    <div className="user-info">
+      <span className="user-name">
+        {user.company || user.name || 'Benutzer'}
+      </span>
+      <span className="user-number">Kunde: {user.customerNumber}</span>
+    </div>
+  )}
             <button onClick={onLogout} className="logout-button">
               <LogOut size={20} />
             </button>

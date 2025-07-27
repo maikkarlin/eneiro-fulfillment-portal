@@ -4,6 +4,7 @@
 }
 
 /* Header */
+/* Header - Nur minimale Änderungen */
 .dashboard-header {
   background: #1a1a1a;
   color: white;
@@ -36,21 +37,30 @@
 }
 
 .logo {
-  height: 30px;
+  height: 28px; /* Etwas kleiner für bessere Proportionen */
+  width: auto;
   filter: brightness(0) invert(1);
+  margin-left: 8px; /* Etwas mehr Abstand vom Rand */
+  margin-right: 0;
+  margin-top: 2px; /* Kleiner Abstand nach oben */
+  margin-bottom: 2px; /* Kleiner Abstand nach unten */
+  vertical-align: middle;
+  display: block; /* Bessere Kontrolle über Positionierung */
 }
 
 .divider {
   width: 1px;
   height: 30px;
   background: #444;
-  margin: 0 20px;
+  margin: 0 20px; /* Abstand links und rechts vom Divider */
+  flex-shrink: 0; /* Verhindert Schrumpfen */
 }
 
 .header-left h1 {
   margin: 0;
   font-size: 20px;
   font-weight: 400;
+  line-height: 1; /* Verhindert extra Zeilenhöhe */
 }
 
 .header-right {
@@ -66,6 +76,10 @@
 .user-name {
   display: block;
   font-size: 14px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-number {
@@ -85,6 +99,42 @@
 
 .logout-button:hover {
   opacity: 0.7;
+}
+
+/* Responsive Anpassungen */
+@media (max-width: 768px) {
+  .header-content {
+    padding: 0 16px;
+    height: 60px;
+  }
+  
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0; /* Entfernt automatische Gaps */
+}
+  
+  
+  .header-left h1 {
+    font-size: 18px;
+  }
+  
+  .user-info {
+    max-width: 160px;
+  }
+  
+  .user-name {
+    font-size: 13px;
+    max-width: 140px;
+  }
+  
+  .user-number {
+    font-size: 11px;
+  }
+  
+  .menu-button {
+    display: block;
+  }
 }
 
 /* Layout */
