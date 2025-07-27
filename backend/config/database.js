@@ -22,7 +22,9 @@ const config = {
     encrypt: false, // Für lokale Verbindung
     trustServerCertificate: true,
     enableArithAbort: true
-  }
+  },
+  requestTimeout: 60000, // 60 Sekunden für komplexe Queries
+  connectionTimeout: 30000 // 30 Sekunden für Verbindungsaufbau
 };
 
 let pool;
@@ -52,4 +54,9 @@ async function testConnection() {
   }
 }
 
-module.exports = { getConnection, sql, testConnection };
+// Hilfsfunktion um den korrekten Datenbanknamen zu ermitteln
+function getDatabaseName() {
+  return process.env.DB_DATABASE || 'eazybusiness';
+}
+
+module.exports = { getConnection, sql, testConnection, getDatabaseName };

@@ -1,39 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  Download, 
-  RefreshCw, 
-  Package, 
-  Scale, 
-  DollarSign, 
-  Truck,
-  Archive
-} from 'lucide-react';
+import { RefreshCw, Download, AlertCircle } from 'lucide-react';
 import { dashboardAPI } from '../services/api';
 import './ItemizedRecords.css';
 
 const ItemizedRecords = () => {
-  const [loading, setLoading] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [availableMonths, setAvailableMonths] = useState([]);
   const [records, setRecords] = useState([]);
-  const [summary, setSummary] = useState({});
+  const [summary, setSummary] = useState(null);
+  const [availableMonths, setAvailableMonths] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     loadAvailableMonths();
   }, []);
 
+  useEffect(() => {
+    if (selectedMonth) {
+      loadRecords();
+    }
+  }, [selectedMonth]);
+
   const loadAvailableMonths = async () => {
     try {
       const response = await dashboardAPI.getAvailableMonths();
       setAvailableMonths(response.data);
       
-      // Automatisch aktuellen Monat auswählen
+      // Automatisch den aktuellen Monat auswählen
       if (response.data.length > 0) {
-        const currentMonth = response.data[0].value;
-        setSelectedMonth(currentMonth);
-        loadRecords(currentMonth);
+        setSelectedMonth(response.data[0].value);
       }
     } catch (err) {
       console.error('Fehler beim Laden der verfügbaren Monate:', err);
@@ -41,96 +36,75 @@ const ItemizedRecords = () => {
     }
   };
 
-  const loadRecords = async (month = selectedMonth) => {
-    if (!month) return;
+  const loadRecords = async () => {
+    if (!selectedMonth) return;
+
+    setLoading(true);
+    setError(null);
     
     try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await dashboardAPI.getItemizedRecords(month);
+      const response = await dashboardAPI.getItemizedRecords(selectedMonth);
       setRecords(response.data.records || []);
-      setSummary(response.data.summary || {});
-      
+      setSummary(response.data.summary || null);
     } catch (err) {
-      console.error('Fehler beim Laden der Daten:', err);
-      setError('Fehler beim Laden des Einzelverbindungsnachweises');
-      setRecords([]);
-      setSummary({});
+      console.error('Fehler beim Laden der Einzelverbindungsnachweise:', err);
+      setError(err.response?.data?.details || 'Fehler beim Laden der Daten');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMonthChange = (month) => {
-    setSelectedMonth(month);
-    loadRecords(month);
-  };
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(value || 0);
-  };
-
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat('de-DE').format(value || 0);
-  };
-
-  const formatWeight = (value) => {
-    if (!value) return '0 kg';
-    return value < 1 ? `${(value * 1000).toFixed(0)} g` : `${value.toFixed(2)} kg`;
-  };
-
   const exportToCSV = () => {
     if (records.length === 0) return;
-    
+
+    // CSV Header definieren (basierend auf den tatsächlichen Spaltennamen)
     const headers = [
+      'Kundennummer',
+      'Kundenname', 
+      'LSFirma',
       'LSVorname',
-      'LSName', 
+      'LSName',
+      'LSStraße',
+      'LSOrt',
       'Lieferland',
       'Erstelldatum',
       'Auftragsnummer',
       'ExterneAuftragsnummer',
+      'ErsterArtikel',
+      'Lieferscheinnummer',
       'Versanddatum',
       'Sendungsnummer',
       'Gewicht',
       'Karton',
       'Kartonbreite',
-      'Kartonhöhe', 
+      'Kartonhöhe',
       'Kartonlänge',
       'Kartonpreis',
       'Versandart',
       'AnzahlPicks',
+      'KostenPicksRabatt',
       'AnzahlPaket',
-      'VKKosten'
+      'VKKosten',
+      'EKKosten',
+      'EKKostenDHL',
+      'FehlerEKKostenDHL'
     ];
-    
+
+    // CSV Content erstellen
     const csvContent = [
-      headers.join(';'),
-      ...records.map(record => [
-        record.LSVorname || '',
-        record.LSName || '',
-        record.Lieferland || '',
-        record.Erstelldatum ? new Date(record.Erstelldatum).toLocaleDateString('de-DE') : '',
-        record.Auftragsnummer || '',
-        record.ExterneAuftragsnummer || '',
-        record.Versanddatum ? new Date(record.Versanddatum).toLocaleDateString('de-DE') : '',
-        record.Sendungsnummer || '',
-        (record.Gewicht || 0).toString().replace('.', ','),
-        record.Karton || '',
-        (record.Kartonbreite || 0).toString().replace('.', ','),
-        (record.Kartonhöhe || 0).toString().replace('.', ','),
-        (record.Kartonlänge || 0).toString().replace('.', ','),
-        (record.Kartonpreis || 0).toString().replace('.', ','),
-        record.Versandart || '',
-        record.AnzahlPicks || 0,
-        record.AnzahlPaket || 0,
-        (record.VKKosten || 0).toString().replace('.', ',')
-      ].join(';'))
+      headers.join(','),
+      ...records.map(record => 
+        headers.map(header => {
+          const value = record[header] || '';
+          // Escape Anführungszeichen und umhülle mit Anführungszeichen falls Kommas enthalten
+          return typeof value === 'string' && (value.includes(',') || value.includes('"')) 
+            ? `"${value.replace(/"/g, '""')}"` 
+            : value;
+        }).join(',')
+      )
     ].join('\n');
-    
+
+    // Download auslösen
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -142,48 +116,47 @@ const ItemizedRecords = () => {
     document.body.removeChild(link);
   };
 
+  const formatCurrency = (value) => {
+    const numValue = parseFloat(value) || 0;
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(numValue);
+  };
+
+  const formatNumber = (value) => {
+    const numValue = parseFloat(value) || 0;
+    return new Intl.NumberFormat('de-DE').format(numValue);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('de-DE');
+  };
+
   const renderSummary = () => {
-    if (!summary.total) return null;
+    if (!summary) return null;
 
     return (
-      <div className="summary-grid">
-        <div className="summary-card">
-          <div className="summary-icon weight">
-            <Scale size={20} />
+      <div className="summary-container">
+        <h3>Zusammenfassung</h3>
+        <div className="summary-grid">
+          <div className="summary-card">
+            <div className="summary-label">Gesamtgewicht</div>
+            <div className="summary-value">{formatNumber(summary.total.weight)} kg</div>
           </div>
-          <div className="summary-content">
-            <h3>Gesamtgewicht</h3>
-            <p className="summary-value">{formatWeight(summary.total.weight)}</p>
+          <div className="summary-card">
+            <div className="summary-label">Picks gesamt</div>
+            <div className="summary-value">{formatNumber(summary.total.picks)}</div>
           </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="summary-icon picks">
-            <Package size={20} />
+          <div className="summary-card">
+            <div className="summary-label">Kosten gesamt</div>
+            <div className="summary-value">{formatCurrency(summary.total.cost)}</div>
           </div>
-          <div className="summary-content">
-            <h3>Versendete Artikel</h3>
-            <p className="summary-value">{formatNumber(summary.total.picks)}</p>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="summary-icon cost">
-            <DollarSign size={20} />
-          </div>
-          <div className="summary-content">
-            <h3>Versandkosten</h3>
-            <p className="summary-value">{formatCurrency(summary.total.cost)}</p>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="summary-icon boxes">
-            <Archive size={20} />
-          </div>
-          <div className="summary-content">
-            <h3>Pakete</h3>
-            <p className="summary-value">{formatNumber(summary.total.packages)}</p>
+          <div className="summary-card">
+            <div className="summary-label">Pakete gesamt</div>
+            <div className="summary-value">{formatNumber(summary.total.packages)}</div>
           </div>
         </div>
       </div>
@@ -191,7 +164,7 @@ const ItemizedRecords = () => {
   };
 
   const renderCarrierBreakdown = () => {
-    if (!summary.byCarrier || Object.keys(summary.byCarrier).length === 0) return null;
+    if (!summary?.byCarrier || Object.keys(summary.byCarrier).length === 0) return null;
 
     return (
       <div className="carrier-breakdown">
@@ -199,23 +172,11 @@ const ItemizedRecords = () => {
         <div className="carrier-grid">
           {Object.entries(summary.byCarrier).map(([carrier, data]) => (
             <div key={carrier} className="carrier-card">
-              <div className="carrier-header">
-                <Truck size={16} />
-                <h4>{carrier}</h4>
-              </div>
+              <div className="carrier-name">{carrier}</div>
               <div className="carrier-stats">
-                <div className="stat">
-                  <span className="label">Sendungen:</span>
-                  <span className="value">{formatNumber(data.count)}</span>
-                </div>
-                <div className="stat">
-                  <span className="label">Kosten:</span>
-                  <span className="value">{formatCurrency(data.cost)}</span>
-                </div>
-                <div className="stat">
-                  <span className="label">Pakete:</span>
-                  <span className="value">{formatNumber(data.packages)}</span>
-                </div>
+                <div>Sendungen: {formatNumber(data.count)}</div>
+                <div>Pakete: {formatNumber(data.packages)}</div>
+                <div>Kosten: {formatCurrency(data.cost)}</div>
               </div>
             </div>
           ))}
@@ -227,30 +188,26 @@ const ItemizedRecords = () => {
   return (
     <div className="itemized-records">
       <div className="records-header">
-        <h2>Einzelverbindungsnachweis</h2>
-        
-        <div className="header-controls">
-          <div className="month-selector">
-            <Calendar size={16} />
+        <div className="header-content">
+          <h2>Einzelverbindungsnachweis</h2>
+          <div className="controls">
             <select 
               value={selectedMonth} 
-              onChange={(e) => handleMonthChange(e.target.value)}
-              disabled={loading}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="month-selector"
             >
-              <option value="">Monat auswählen...</option>
+              <option value="">Monat auswählen</option>
               {availableMonths.map(month => (
                 <option key={month.value} value={month.value}>
                   {month.label} ({month.count} Sendungen)
                 </option>
               ))}
             </select>
-          </div>
-          
-          <div className="action-buttons">
+            
             <button 
-              onClick={() => loadRecords()} 
+              onClick={loadRecords} 
               disabled={loading || !selectedMonth}
-              className="refresh-button"
+              className={`refresh-button ${loading ? 'spinning' : ''}`}
             >
               <RefreshCw size={16} className={loading ? 'spinning' : ''} />
               Aktualisieren
@@ -270,8 +227,11 @@ const ItemizedRecords = () => {
 
       {error && (
         <div className="error-message">
-          <p>{error}</p>
-          <button onClick={() => loadRecords()}>Erneut versuchen</button>
+          <AlertCircle size={20} />
+          <div>
+            <p>{error}</p>
+            <button onClick={() => loadRecords()}>Erneut versuchen</button>
+          </div>
         </div>
       )}
 
@@ -309,6 +269,8 @@ const ItemizedRecords = () => {
                             <div className="cell-main">
                               <strong>{record.LSVorname} {record.LSName}</strong>
                             </div>
+                            <div className="cell-sub">{record.LSFirma}</div>
+                            <div className="cell-sub">{record.LSStraße}, {record.LSOrt}</div>
                             <div className="cell-sub">{record.Lieferland}</div>
                           </div>
                         </td>
@@ -318,23 +280,29 @@ const ItemizedRecords = () => {
                               <strong>{record.Auftragsnummer}</strong>
                             </div>
                             <div className="cell-sub">
-                              {record.ExterneAuftragsnummer && `Ext: ${record.ExterneAuftragsnummer}`}
+                              {record.externeAuftragsnummer && `Ext: ${record.externeAuftragsnummer}`}
                             </div>
                             <div className="cell-sub">
-                              Erstellt: {record.Erstelldatum ? new Date(record.Erstelldatum).toLocaleDateString('de-DE') : ''}
+                              Erstellt: {formatDate(record.Erstelldatum)}
+                            </div>
+                            <div className="cell-sub">
+                              LS: {record.Lieferscheinnummer}
+                            </div>
+                            <div className="cell-sub">
+                              Artikel: {record.ErsterArtikel}
                             </div>
                           </div>
                         </td>
                         <td>
                           <div className="cell-content">
                             <div className="cell-main">
-                              <strong>{record.Sendungsnummer}</strong>
+                              <strong>{record.Sendungsnummer || 'Keine Sendungsnummer'}</strong>
                             </div>
                             <div className="cell-sub">
-                              Versandt: {record.Versanddatum ? new Date(record.Versanddatum).toLocaleDateString('de-DE') : ''}
+                              Versendet: {formatDate(record.Versanddatum)}
                             </div>
                             <div className="cell-sub">
-                              Gewicht: {formatWeight(record.Gewicht)}
+                              Gewicht: {formatNumber(record.Gewicht)} kg
                             </div>
                           </div>
                         </td>
@@ -344,10 +312,16 @@ const ItemizedRecords = () => {
                               <strong>{record.Karton}</strong>
                             </div>
                             <div className="cell-sub">
-                              Preis: {formatCurrency(record.Kartonpreis)}
+                              {record.Kartonbreite}×{record.Kartonhöhe}×{record.Kartonlänge} cm
+                            </div>
+                            <div className="cell-sub">
+                              Karton: {formatCurrency(record.Kartonpreis)}
                             </div>
                             <div className="cell-sub">
                               Picks: {formatNumber(record.AnzahlPicks)}
+                            </div>
+                            <div className="cell-sub">
+                              Pick-Kosten: {formatCurrency(record.KostenPicksRabatt)}
                             </div>
                           </div>
                         </td>
@@ -357,10 +331,22 @@ const ItemizedRecords = () => {
                               <strong>{record.Versandart}</strong>
                             </div>
                             <div className="cell-sub">
-                              Pakete: {formatNumber(record.AnzahlPaket)}
+                              VK: {formatCurrency(record.VKKosten)}
                             </div>
-                            <div className="cell-main currency">
-                              {formatCurrency(record.VKKosten)}
+                            <div className="cell-sub">
+                              EK: {formatCurrency(record.EKKosten)}
+                            </div>
+                            <div className="cell-sub">
+                              DHL-EK: {formatCurrency(record.EKKostenDHL)}
+                            </div>
+                            {record.FehlerEKKostenDHL === 'X' && (
+                              <div className="cell-error">
+                                <AlertCircle size={14} />
+                                EK-Fehler
+                              </div>
+                            )}
+                            <div className="cell-sub">
+                              Pakete: {formatNumber(record.AnzahlPaket)}
                             </div>
                           </div>
                         </td>
@@ -371,12 +357,10 @@ const ItemizedRecords = () => {
               </div>
             </div>
           )}
-          
-          {records.length === 0 && !loading && selectedMonth && (
+
+          {!loading && records.length === 0 && selectedMonth && (
             <div className="no-data">
-              <Package size={48} />
-              <h3>Keine Daten verfügbar</h3>
-              <p>Für den ausgewählten Monat wurden keine Versanddaten gefunden.</p>
+              <p>Keine Daten für den ausgewählten Monat gefunden.</p>
             </div>
           )}
         </>
