@@ -57,7 +57,7 @@ const ItemizedRecords = () => {
   const exportToCSV = () => {
     if (records.length === 0) return;
 
-    // CSV Header definieren (basierend auf den tatsächlichen Spaltennamen)
+    // CSV Header definieren
     const headers = [
       'Kundennummer',
       'Kundenname', 
@@ -96,7 +96,6 @@ const ItemizedRecords = () => {
       ...records.map(record => 
         headers.map(header => {
           const value = record[header] || '';
-          // Escape Anführungszeichen und umhülle mit Anführungszeichen falls Kommas enthalten
           return typeof value === 'string' && (value.includes(',') || value.includes('"')) 
             ? `"${value.replace(/"/g, '""')}"` 
             : value;
@@ -195,6 +194,7 @@ const ItemizedRecords = () => {
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="month-selector"
+              disabled={loading}
             >
               <option value="">Monat auswählen</option>
               {availableMonths.map(month => (
@@ -207,7 +207,7 @@ const ItemizedRecords = () => {
             <button 
               onClick={loadRecords} 
               disabled={loading || !selectedMonth}
-              className={`refresh-button ${loading ? 'spinning' : ''}`}
+              className={`refresh-button ${loading ? 'loading' : ''}`}
             >
               <RefreshCw size={16} className={loading ? 'spinning' : ''} />
               Aktualisieren
