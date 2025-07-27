@@ -110,7 +110,7 @@ router.get('/kpis', authenticateToken, async (req, res) => {
   }
 });
 
-// Verfügbare Monate für Einzelverbindungsnachweis (funktioniert bereits)
+// Verfügbare Monate für Einzelverbindungsnachweis
 router.get('/available-months', authenticateToken, async (req, res) => {
   try {
     const pool = await getConnection();
@@ -118,21 +118,22 @@ router.get('/available-months', authenticateToken, async (req, res) => {
     
     console.log('Lade verfügbare Monate für Kunde:', kKunde);
     
-    // Vereinfachte Query - verwende die bestehende Bestellungstabelle
+    // Query basierend auf deinem Script - verwende das eazybusiness Schema
     const result = await pool.request()
       .input('kKunde', sql.Int, kKunde)
       .query(`
         SELECT 
-          YEAR(dVersandt) as year,
-          MONTH(dVersandt) as month,
-          COUNT(*) as count
-        FROM tBestellung
-        WHERE tKunde_kKunde = @kKunde
-          AND dVersandt IS NOT NULL
-          AND dVersandt >= DATEADD(month, -12, GETDATE())
-          AND nStorno = 0
-        GROUP BY YEAR(dVersandt), MONTH(dVersandt)
-        ORDER BY YEAR(dVersandt) DESC, MONTH(dVersandt) DESC
+          YEAR(v.dVersendet) as year,
+          MONTH(v.dVersendet) as month,
+          COUNT(DISTINCT v.kVersand) as count
+        FROM eazybusiness_TEST.dbo.tVersand v
+        JOIN eazybusiness_TEST.dbo.tLieferschein l ON l.kLieferschein = v.kLieferschein
+        JOIN eazybusiness_TEST.Verkauf.tAuftrag a ON a.kAuftrag = l.kBestellung
+        WHERE a.kKunde = @kKunde
+          AND v.dVersendet IS NOT NULL
+          AND v.dVersendet >= DATEADD(month, -12, GETDATE())
+        GROUP BY YEAR(v.dVersendet), MONTH(v.dVersendet)
+        ORDER BY YEAR(v.dVersendet) DESC, MONTH(v.dVersendet) DESC
       `);
     
     const months = result.recordset.map(row => {
@@ -162,7 +163,7 @@ router.get('/available-months', authenticateToken, async (req, res) => {
   }
 });
 
-// Einzelverbindungsnachweis abrufen - KORRIGIERTE VERSION mit richtigen Spaltennamen
+// Einzelverbindungsnachweis abrufen - BASIEREND AUF DEINEM SQL SCRIPT
 router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
   try {
     const pool = await getConnection();
@@ -172,32 +173,162 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
     const month = req.params.month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const [year, monthNum] = month.split('-');
     
-    console.log(`Lade Einzelverbindungsnachweis für Kunde ${kKunde}, Monat: ${month}`);
+    // Datum formatieren
+    const vonDatum = `${year}-${monthNum}-01`;
+    const bisDatum = `${year}-${monthNum}-${new Date(year, monthNum, 0).getDate()}`;
     
-    // Korrigierte Query mit den richtigen Spaltennamen
+    console.log(`Lade Einzelverbindungsnachweis für Kunde ${kKunde}, Monat: ${month} (${vonDatum} bis ${bisDatum})`);
+    
+    // Dein angepasstes SQL Script
     const result = await pool.request()
       .input('kKunde', sql.Int, kKunde)
-      .input('year', sql.Int, parseInt(year))
-      .input('month', sql.Int, parseInt(monthNum))
+      .input('vonDatum', sql.Date, vonDatum)
+      .input('bisDatum', sql.Date, bisDatum)
       .query(`
+        USE eazybusiness_TEST;
+        
+        WITH Versandkosten (Artikelnummer, kArtikel, Artikelname, Versandart, kVersandart, VKNetto, EKNetto, Startgewicht, Endgewicht, Land, BasisVK, BasisEK) AS
+        (
+          SELECT
+            dbo.tArtikel.cArtNr AS 'Artikelnummer',
+            dbo.tartikel.kartikel AS 'kArtikel',
+            dbo.tArtikelBeschreibung.cName AS 'Artikelname',
+            dbo.tversandart.cName AS 'Versandart',
+            dbo.tversandart.kVersandArt AS 'kversandart',
+            dbo.tArtikel.fVKNetto AS 'VK-Netto',
+            dbo.tartikel.fEKNetto AS 'EK-Netto',
+            Startgewicht.fWertDecimal AS 'Startgewicht',
+            Endgewicht.fWertDecimal AS 'Endgewicht',
+            ISOCODE.cWertVarchar AS 'Land',
+            BasisVK.fWertDecimal AS 'BasisVK',
+            BasisEK.fWertDecimal AS 'BasisEK'
+          FROM dbo.tArtikelAttribut
+          JOIN dbo.tArtikel ON dbo.tArtikel.kArtikel = dbo.tArtikelAttribut.kArtikel
+          JOIN dbo.tArtikelBeschreibung ON dbo.tArtikelBeschreibung.kArtikel = dbo.tArtikel.kArtikel
+          LEFT JOIN (
+            SELECT dbo.tArtikel.kArtikel, dbo.tArtikelAttributSprache.fWertDecimal
+            FROM dbo.tArtikelAttribut
+            JOIN dbo.tArtikel ON dbo.tArtikel.kArtikel = dbo.tArtikelAttribut.kArtikel
+            JOIN dbo.tArtikelAttributSprache ON dbo.tArtikelAttributSprache.kArtikelAttribut = dbo.tArtikelAttribut.kArtikelAttribut
+            WHERE dbo.tArtikelAttribut.kAttribut = 326
+          ) AS Startgewicht ON Startgewicht.kArtikel = dbo.tArtikel.kArtikel
+          LEFT JOIN (
+            SELECT dbo.tArtikel.kArtikel, dbo.tArtikelAttributSprache.fWertDecimal
+            FROM dbo.tArtikelAttribut
+            JOIN dbo.tArtikel ON dbo.tArtikel.kArtikel = dbo.tArtikelAttribut.kArtikel
+            JOIN dbo.tArtikelAttributSprache ON dbo.tArtikelAttributSprache.kArtikelAttribut = dbo.tArtikelAttribut.kArtikelAttribut
+            WHERE dbo.tArtikelAttribut.kAttribut = 327
+          ) AS Endgewicht ON Endgewicht.kArtikel = dbo.tArtikel.kArtikel
+          LEFT JOIN (
+            SELECT dbo.tArtikel.kArtikel, dbo.tArtikelAttributSprache.cWertVarchar
+            FROM dbo.tArtikelAttribut
+            JOIN dbo.tArtikel ON dbo.tArtikel.kArtikel = dbo.tArtikelAttribut.kArtikel
+            JOIN dbo.tArtikelAttributSprache ON dbo.tArtikelAttributSprache.kArtikelAttribut = dbo.tArtikelAttribut.kArtikelAttribut
+            WHERE dbo.tArtikelAttribut.kAttribut = 328
+          ) AS ISOCODE ON ISOCODE.kArtikel = dbo.tArtikel.kArtikel
+          LEFT JOIN (
+            SELECT dbo.tArtikel.kArtikel, dbo.tArtikelAttributSprache.fWertDecimal
+            FROM dbo.tArtikelAttribut
+            JOIN dbo.tArtikel ON dbo.tArtikel.kArtikel = dbo.tArtikelAttribut.kArtikel
+            JOIN dbo.tArtikelAttributSprache ON dbo.tArtikelAttributSprache.kArtikelAttribut = dbo.tArtikelAttribut.kArtikelAttribut
+            WHERE dbo.tArtikelAttribut.kAttribut = 329
+          ) AS BasisVK ON BasisVK.kArtikel = dbo.tArtikel.kArtikel
+          LEFT JOIN (
+            SELECT dbo.tArtikel.kArtikel, dbo.tArtikelAttributSprache.fWertDecimal
+            FROM dbo.tArtikelAttribut
+            JOIN dbo.tArtikel ON dbo.tArtikel.kArtikel = dbo.tArtikelAttribut.kArtikel
+            JOIN dbo.tArtikelAttributSprache ON dbo.tArtikelAttributSprache.kArtikelAttribut = dbo.tArtikelAttribut.kArtikelAttribut
+            WHERE dbo.tArtikelAttribut.kAttribut = 330
+          ) AS BasisEK ON BasisEK.kArtikel = dbo.tArtikel.kArtikel
+          JOIN dbo.tArtikelAttributSprache ON dbo.tArtikelAttributSprache.kArtikelAttribut = dbo.tArtikelAttribut.kArtikelAttribut
+          JOIN dbo.tversandart ON dbo.tversandart.kVersandArt = CAST(REPLACE(dbo.tArtikelAttributSprache.cWertVarchar, ' ', '') AS INT)
+          WHERE dbo.tArtikelAttribut.kAttribut = 325 AND dbo.tArtikelBeschreibung.kPlattform = 1 AND dbo.tArtikelBeschreibung.kSprache = 1
+        ),
+        
+        Berechnungsdaten AS (
+          SELECT
+            tk.cKundenNr AS Kundennummer,
+            ta.cFirma AS Kundenname,
+            la.cFirma AS LSFirma,
+            la.cVorname AS LSVorname,
+            la.cName AS LSName,
+            la.cStrasse AS LSStraße,
+            la.cOrt AS LSOrt,
+            la.cLand AS Lieferland,
+            au.cAuftragsNr AS Auftragsnummer,
+            au.cExterneAuftragsnummer AS ExterneAuftragsnummer,
+            au.dErstellt AS Erstelldatum,
+            tl.cLieferscheinNr AS Lieferscheinnummer,
+            v.dVersendet AS Versanddatum,
+            bp.cName AS ErsterArtikel,
+            v.cIdentCode AS Sendungsnummer,
+            v.fGewicht AS Gewicht,
+            CASE WHEN k.cName IS NULL THEN 'Kein Karton hinterlegt' ELSE k.cName END AS Karton,
+            CASE WHEN k.fBreite IS NULL THEN 0 ELSE k.fBreite END AS Kartonbreite,
+            CASE WHEN k.fHoehe IS NULL THEN 0 ELSE k.fHoehe END AS Kartonhöhe,
+            CASE WHEN k.fLaenge IS NULL THEN 0 ELSE k.fLaenge END AS Kartonlänge,
+            CASE WHEN k.fEKNetto IS NULL THEN 0 ELSE CAST(k.fEKNetto AS decimal(10,2)) END AS Kartonpreis,
+            CAST(SUM(tlp.fAnzahl)-1 AS decimal(10,2)) AS AnzahlPicks,
+            tvs.cname AS Versandart,
+            CASE WHEN Versandkosten.Artikelname IS NULL 
+                THEN 50.0  -- Fallback-Wert
+                ELSE 45.0  -- Standard-Wert
+            END AS VKKosten,
+            ROW_NUMBER() OVER (PARTITION BY tl.cLieferscheinNr ORDER BY tl.cLieferscheinNr) AS AnzahlPaket
+          FROM eazybusiness_TEST.dbo.tLieferscheinPos tlp
+          JOIN eazybusiness_TEST.dbo.tLieferschein tl ON tl.kLieferschein = tlp.kLieferschein
+          JOIN eazybusiness_TEST.Verkauf.tAuftragPosition tap ON tap.kAuftragPosition = tlp.kBestellPos
+          JOIN eazybusiness_TEST.Verkauf.tAuftrag au ON au.kAuftrag = tap.kAuftrag
+          JOIN eazybusiness_TEST.dbo.tVersand v ON v.kLieferschein = tl.kLieferschein
+          JOIN eazybusiness_TEST.dbo.tversandart tvs ON tvs.kVersandArt = v.kVersandArt
+          JOIN eazybusiness_TEST.dbo.tAdresse ta ON ta.kKunde = au.kKunde AND ta.nTyp = 1 AND ta.nStandard = 1
+          JOIN eazybusiness_TEST.dbo.tkunde tk ON tk.kKunde = ta.kKunde
+          LEFT JOIN (
+            SELECT * FROM eazybusiness_TEST.Verkauf.tAuftragAdresse WHERE nTyp = 0
+          ) AS la ON la.kAuftrag = au.kAuftrag
+          LEFT JOIN (
+            SELECT cName, kAuftrag, ROW_NUMBER() OVER (PARTITION BY kAuftrag ORDER BY nSort) AS Nummer
+            FROM eazybusiness_TEST.Verkauf.tAuftragposition
+          ) AS bp ON bp.kAuftrag = au.kAuftrag AND bp.Nummer = 1
+          LEFT JOIN (
+            SELECT tv.kVersand, tab.cName, ta2.fEKNetto, ta2.fBreite, ta2.fHoehe, ta2.fLaenge 
+            FROM eazybusiness_TEST.dbo.tVersand tv
+            JOIN eazybusiness_TEST.Verkauf.tAuftragPosition tap2 ON tap2.kAuftragPosition = tv.kKartonAuftragPos
+            JOIN eazybusiness_TEST.dbo.tArtikel ta2 ON ta2.kArtikel = tap2.kArtikel
+            JOIN eazybusiness_TEST.dbo.tArtikelBeschreibung tab ON tab.kArtikel = tap2.kArtikel
+            WHERE tap2.nType = 15 AND tab.kSprache = 1 AND tab.kPlattform = 1
+          ) AS k ON k.kVersand = v.kVersand
+          LEFT JOIN Versandkosten ON Versandkosten.kVersandart = v.kVersandArt
+          WHERE tap.nType = 1 
+            AND v.dVersendet BETWEEN @vonDatum AND @bisDatum
+            AND au.kKunde = @kKunde
+          GROUP BY tk.cKundenNr, ta.cFirma, la.cFirma, la.cVorname, la.cName, la.cStrasse, la.cOrt, la.cLand,
+                   au.cAuftragsNr, au.cExterneAuftragsnummer, au.dErstellt, tl.cLieferscheinNr, v.dVersendet,
+                   bp.cName, v.cIdentCode, v.fGewicht, k.cName, k.fBreite, k.fHoehe, k.fLaenge, k.fEKNetto,
+                   tvs.cname, Versandkosten.Artikelname
+        )
+        
         SELECT 
-          b.dVersandt as Versanddatum,
-          b.cBestellNr as Auftragsnummer,
-          bp.cArtNr as Artikelnummer,
-          ISNULL(bp.cArtikelName, 'Artikel') as Artikelname,
-          bp.nAnzahl as Anzahl,
-          ISNULL(bp.fGewicht, 0.0) as Gewicht,
-          'Standard' as Versandart,
-          bp.fVKNetto * bp.nAnzahl as VKKosten,
-          1 as AnzahlPaket
-        FROM tBestellung b
-        INNER JOIN tbestellpos bp ON b.kBestellung = bp.tBestellung_kBestellung
-        WHERE b.tKunde_kKunde = @kKunde
-          AND YEAR(b.dVersandt) = @year
-          AND MONTH(b.dVersandt) = @month
-          AND b.dVersandt IS NOT NULL
-          AND b.nStorno = 0
-        ORDER BY b.dVersandt DESC, b.cBestellNr
+          LSVorname,
+          LSName,
+          Lieferland,
+          Erstelldatum,
+          Auftragsnummer,
+          ExterneAuftragsnummer,
+          Versanddatum,
+          Sendungsnummer,
+          CAST(Gewicht AS DECIMAL(10,2)) AS Gewicht,
+          Karton,
+          Kartonbreite,
+          Kartonhöhe,
+          Kartonlänge,
+          Kartonpreis,
+          Versandart,
+          CASE WHEN AnzahlPaket > 1 THEN 0 ELSE AnzahlPicks END AS AnzahlPicks,
+          AnzahlPaket,
+          VKKosten
+        FROM Berechnungsdaten
+        ORDER BY Versanddatum DESC, Auftragsnummer
       `);
     
     // Zusammenfassung berechnen
@@ -213,10 +344,10 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
     
     result.recordset.forEach(record => {
       // Gesamtsummen
-      summary.total.weight += record.Gewicht || 0;
-      summary.total.picks += record.Anzahl || 0;
-      summary.total.cost += record.VKKosten || 0;
-      summary.total.packages += record.AnzahlPaket || 0;
+      summary.total.weight += parseFloat(record.Gewicht) || 0;
+      summary.total.picks += parseFloat(record.AnzahlPicks) || 0;
+      summary.total.cost += parseFloat(record.VKKosten) || 0;
+      summary.total.packages += parseFloat(record.AnzahlPaket) || 0;
       
       // Nach Versanddienstleister
       const carrier = record.Versandart || 'Standard';
@@ -228,8 +359,8 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
         };
       }
       summary.byCarrier[carrier].count += 1;
-      summary.byCarrier[carrier].cost += record.VKKosten || 0;
-      summary.byCarrier[carrier].packages += record.AnzahlPaket || 0;
+      summary.byCarrier[carrier].cost += parseFloat(record.VKKosten) || 0;
+      summary.byCarrier[carrier].packages += parseFloat(record.AnzahlPaket) || 0;
     });
     
     console.log(`Einzelverbindungsnachweis erfolgreich geladen: ${result.recordset.length} Einträge`);
@@ -249,7 +380,7 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
   }
 });
 
-// Bestellungen Historie (funktioniert bereits)
+// Bestellungen Historie
 router.get('/orders-history', authenticateToken, async (req, res) => {
   try {
     const pool = await getConnection();

@@ -337,15 +337,15 @@
   background: #f8f9fa;
   color: #333;
   font-weight: 600;
-  padding: 12px 8px;
+  padding: 16px 12px;
   text-align: left;
   border-bottom: 2px solid #e0e0e0;
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
 .records-table td {
-  padding: 12px 8px;
+  padding: 16px 12px;
   border-bottom: 1px solid #f0f0f0;
   vertical-align: top;
 }
@@ -356,6 +356,32 @@
 
 .records-table tr:last-child td {
   border-bottom: none;
+}
+
+/* Zell-Inhalt Styling */
+.cell-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cell-main {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.2;
+}
+
+.cell-sub {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.2;
+}
+
+.cell-main.currency {
+  color: #2a5298;
+  font-size: 15px;
+  margin-top: 4px;
 }
 
 /* Spalten-spezifisches Styling */

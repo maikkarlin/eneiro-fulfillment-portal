@@ -87,29 +87,47 @@ const ItemizedRecords = () => {
     if (records.length === 0) return;
     
     const headers = [
-      'Datum',
+      'LSVorname',
+      'LSName', 
+      'Lieferland',
+      'Erstelldatum',
       'Auftragsnummer',
-      'Artikelnummer',
-      'Artikelname',
-      'Anzahl',
+      'ExterneAuftragsnummer',
+      'Versanddatum',
+      'Sendungsnummer',
       'Gewicht',
+      'Karton',
+      'Kartonbreite',
+      'Kartonhöhe', 
+      'Kartonlänge',
+      'Kartonpreis',
       'Versandart',
-      'Kosten',
-      'Paketanzahl'
+      'AnzahlPicks',
+      'AnzahlPaket',
+      'VKKosten'
     ];
     
     const csvContent = [
       headers.join(';'),
       ...records.map(record => [
-        record.Versanddatum || '',
+        record.LSVorname || '',
+        record.LSName || '',
+        record.Lieferland || '',
+        record.Erstelldatum ? new Date(record.Erstelldatum).toLocaleDateString('de-DE') : '',
         record.Auftragsnummer || '',
-        record.Artikelnummer || '',
-        record.Artikelname || '',
-        record.Anzahl || 0,
-        record.Gewicht || 0,
+        record.ExterneAuftragsnummer || '',
+        record.Versanddatum ? new Date(record.Versanddatum).toLocaleDateString('de-DE') : '',
+        record.Sendungsnummer || '',
+        (record.Gewicht || 0).toString().replace('.', ','),
+        record.Karton || '',
+        (record.Kartonbreite || 0).toString().replace('.', ','),
+        (record.Kartonhöhe || 0).toString().replace('.', ','),
+        (record.Kartonlänge || 0).toString().replace('.', ','),
+        (record.Kartonpreis || 0).toString().replace('.', ','),
         record.Versandart || '',
-        (record.VKKosten || 0).toString().replace('.', ','),
-        record.AnzahlPaket || 0
+        record.AnzahlPicks || 0,
+        record.AnzahlPaket || 0,
+        (record.VKKosten || 0).toString().replace('.', ',')
       ].join(';'))
     ].join('\n');
     
@@ -276,29 +294,76 @@ const ItemizedRecords = () => {
                 <table className="records-table">
                   <thead>
                     <tr>
-                      <th>Datum</th>
+                      <th>Lieferung</th>
                       <th>Auftrag</th>
-                      <th>Artikel-Nr.</th>
-                      <th>Artikel</th>
-                      <th>Anzahl</th>
-                      <th>Gewicht</th>
-                      <th>Versandart</th>
-                      <th>Kosten</th>
-                      <th>Pakete</th>
+                      <th>Sendung</th>
+                      <th>Karton & Kosten</th>
+                      <th>Versand</th>
                     </tr>
                   </thead>
                   <tbody>
                     {records.map((record, index) => (
                       <tr key={index}>
-                        <td>{record.Versanddatum ? new Date(record.Versanddatum).toLocaleDateString('de-DE') : ''}</td>
-                        <td>{record.Auftragsnummer || ''}</td>
-                        <td>{record.Artikelnummer || ''}</td>
-                        <td className="article-name">{record.Artikelname || ''}</td>
-                        <td className="number">{formatNumber(record.Anzahl)}</td>
-                        <td className="number">{formatWeight(record.Gewicht)}</td>
-                        <td>{record.Versandart || ''}</td>
-                        <td className="currency">{formatCurrency(record.VKKosten)}</td>
-                        <td className="number">{formatNumber(record.AnzahlPaket)}</td>
+                        <td>
+                          <div className="cell-content">
+                            <div className="cell-main">
+                              <strong>{record.LSVorname} {record.LSName}</strong>
+                            </div>
+                            <div className="cell-sub">{record.Lieferland}</div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="cell-content">
+                            <div className="cell-main">
+                              <strong>{record.Auftragsnummer}</strong>
+                            </div>
+                            <div className="cell-sub">
+                              {record.ExterneAuftragsnummer && `Ext: ${record.ExterneAuftragsnummer}`}
+                            </div>
+                            <div className="cell-sub">
+                              Erstellt: {record.Erstelldatum ? new Date(record.Erstelldatum).toLocaleDateString('de-DE') : ''}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="cell-content">
+                            <div className="cell-main">
+                              <strong>{record.Sendungsnummer}</strong>
+                            </div>
+                            <div className="cell-sub">
+                              Versandt: {record.Versanddatum ? new Date(record.Versanddatum).toLocaleDateString('de-DE') : ''}
+                            </div>
+                            <div className="cell-sub">
+                              Gewicht: {formatWeight(record.Gewicht)}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="cell-content">
+                            <div className="cell-main">
+                              <strong>{record.Karton}</strong>
+                            </div>
+                            <div className="cell-sub">
+                              Preis: {formatCurrency(record.Kartonpreis)}
+                            </div>
+                            <div className="cell-sub">
+                              Picks: {formatNumber(record.AnzahlPicks)}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="cell-content">
+                            <div className="cell-main">
+                              <strong>{record.Versandart}</strong>
+                            </div>
+                            <div className="cell-sub">
+                              Pakete: {formatNumber(record.AnzahlPaket)}
+                            </div>
+                            <div className="cell-main currency">
+                              {formatCurrency(record.VKKosten)}
+                            </div>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
