@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Download, AlertCircle } from 'lucide-react';
+import { RefreshCw, Download, AlertCircle, Calendar } from 'lucide-react';
 import { dashboardAPI } from '../services/api';
 import './ItemizedRecords.css';
 
@@ -186,10 +186,12 @@ const ItemizedRecords = () => {
 
   return (
     <div className="itemized-records">
-      <div className="records-header">
-        <div className="header-content">
-          <h2>Einzelverbindungsnachweis</h2>
-          <div className="controls">
+      {/* Header mit Controls */}
+      <div className="page-header">
+        <h1>Einzelverbindungsnachweis</h1>
+        <div className="page-actions">
+          <div className="month-selector-wrapper">
+            <Calendar size={16} className="calendar-icon" />
             <select 
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(e.target.value)}
@@ -203,25 +205,25 @@ const ItemizedRecords = () => {
                 </option>
               ))}
             </select>
-            
-            <button 
-              onClick={loadRecords} 
-              disabled={loading || !selectedMonth}
-              className={`refresh-button ${loading ? 'loading' : ''}`}
-            >
-              <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-              Aktualisieren
-            </button>
-            
-            <button 
-              onClick={exportToCSV} 
-              disabled={records.length === 0}
-              className="export-button"
-            >
-              <Download size={16} />
-              CSV Export
-            </button>
           </div>
+          
+          <button 
+            onClick={loadRecords} 
+            disabled={loading || !selectedMonth}
+            className={`action-button refresh-button ${loading ? 'loading' : ''}`}
+          >
+            <RefreshCw size={16} className={loading ? 'spinning' : ''} />
+            Aktualisieren
+          </button>
+          
+          <button 
+            onClick={exportToCSV} 
+            disabled={records.length === 0}
+            className="action-button export-button"
+          >
+            <Download size={16} />
+            CSV Export
+          </button>
         </div>
       </div>
 
