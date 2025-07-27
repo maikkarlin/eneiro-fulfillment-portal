@@ -4,7 +4,7 @@ import {
   Download, 
   RefreshCw, 
   Package, 
-  Weight, 
+  Scale, 
   DollarSign, 
   Truck,
   Archive
@@ -131,7 +131,7 @@ const ItemizedRecords = () => {
       <div className="summary-grid">
         <div className="summary-card">
           <div className="summary-icon weight">
-            <Weight size={20} />
+            <Scale size={20} />
           </div>
           <div className="summary-content">
             <h3>Gesamtgewicht</h3>
