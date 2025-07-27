@@ -162,7 +162,7 @@ router.get('/available-months', authenticateToken, async (req, res) => {
   }
 });
 
-// Einzelverbindungsnachweis abrufen - KORRIGIERTE VEREINFACHTE VERSION
+// Einzelverbindungsnachweis abrufen - KORRIGIERTE VERSION mit richtigen Spaltennamen
 router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
   try {
     const pool = await getConnection();
@@ -174,7 +174,7 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
     
     console.log(`Lade Einzelverbindungsnachweis für Kunde ${kKunde}, Monat: ${month}`);
     
-    // Vereinfachte Query basierend auf bestehenden funktionierenden Tabellen
+    // Korrigierte Query mit den richtigen Spaltennamen
     const result = await pool.request()
       .input('kKunde', sql.Int, kKunde)
       .input('year', sql.Int, parseInt(year))
@@ -184,9 +184,9 @@ router.get('/itemized-records/:month?', authenticateToken, async (req, res) => {
           b.dVersandt as Versanddatum,
           b.cBestellNr as Auftragsnummer,
           bp.cArtNr as Artikelnummer,
-          bp.cName as Artikelname,
+          ISNULL(bp.cArtikelName, 'Artikel') as Artikelname,
           bp.nAnzahl as Anzahl,
-          bp.fGewicht as Gewicht,
+          ISNULL(bp.fGewicht, 0.0) as Gewicht,
           'Standard' as Versandart,
           bp.fVKNetto * bp.nAnzahl as VKKosten,
           1 as AnzahlPaket
