@@ -333,20 +333,8 @@ const ItemizedRecords = () => {
                               <strong>{record.Versandart}</strong>
                             </div>
                             <div className="cell-sub">
-                              VK: {formatCurrency(record.VKKosten)}
+                              Versandkosten: {formatCurrency(record.VKKosten)}
                             </div>
-                            <div className="cell-sub">
-                              EK: {formatCurrency(record.EKKosten)}
-                            </div>
-                            <div className="cell-sub">
-                              DHL-EK: {formatCurrency(record.EKKostenDHL)}
-                            </div>
-                            {record.FehlerEKKostenDHL === 'X' && (
-                              <div className="cell-error">
-                                <AlertCircle size={14} />
-                                EK-Fehler
-                              </div>
-                            )}
                             <div className="cell-sub">
                               Pakete: {formatNumber(record.AnzahlPaket)}
                             </div>
