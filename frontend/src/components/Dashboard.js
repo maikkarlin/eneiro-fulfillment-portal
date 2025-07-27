@@ -1,64 +1,189 @@
+// frontend/src/components/Dashboard.js - ORIGINAL WIEDERHERGESTELLT
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   Package, 
-  TrendingUp, 
-  TrendingDown,
-  Clock, 
+  FileText, 
   LogOut, 
-  Menu, 
-  FileText,
+  Menu,
+  TrendingUp,
+  Clock,
   DollarSign,
   Truck,
-  PercentIcon,
-  ArrowUp,
-  ArrowDown,
-  Minus
+  // NEU für Mitarbeiter:
+  ClipboardList,
+  Plus,
+  Eye,
+  Users,
+  CheckCircle,
+  AlertCircle,
+  Camera,
+  Image,
+  X
 } from 'lucide-react';
-import { dashboardAPI } from '../services/api';
-import ItemizedRecords from './ItemizedRecords';
+import { dashboardAPI, goodsReceiptAPI } from '../services/api';
+import GoodsReceiptForm from './GoodsReceiptForm';
+import ItemizedRecords from './ItemizedRecords'; // ORIGINAL KOMPONENTE
 import './Dashboard.css';
 
 const Dashboard = ({ user, onLogout }) => {
-  const [activeView, setActiveView] = useState('overview');
+  const [activeSection, setActiveSection] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [data, setData] = useState({});
+  const [goodsReceiptData, setGoodsReceiptData] = useState({});
   const [loading, setLoading] = useState(true);
-  const [kpis, setKpis] = useState({});
-  const [error, setError] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [photoModal, setPhotoModal] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    loadKPIs();
+    loadDashboardData();
   }, []);
 
-  const loadKPIs = async () => {
+  const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await dashboardAPI.getKPIs();
-      setKpis(response.data);
-      setError(null);
-    } catch (err) {
-      console.error('Fehler beim Laden der KPIs:', err);
-      setError('Fehler beim Laden der Dashboard-Daten');
+      setError('');
+      
+      if (user?.role === 'customer') {
+        // ORIGINAL Kunden-Dashboard
+        const [kpis, orders] = await Promise.all([
+          dashboardAPI.getKPIs(),
+          dashboardAPI.getOrdersHistory()
+        ]);
+        
+        setData({
+          kpis: kpis.data,
+          orders: orders.data
+        });
+      } else if (user?.role === 'employee') {
+        // Mitarbeiter-Dashboard
+        const [goodsReceipts, goodsReceiptStats] = await Promise.all([
+          goodsReceiptAPI.getAll(),
+          goodsReceiptAPI.getStats()
+        ]);
+        
+        setGoodsReceiptData({
+          list: goodsReceipts.data,
+          stats: goodsReceiptStats.data
+        });
+      }
+      
+    } catch (error) {
+      console.error('Fehler beim Laden der Dashboard-Daten:', error);
+      setError('Fehler beim Laden der Daten: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(value);
+  // Navigation items basierend auf Benutzerrolle
+  const getNavigationItems = () => {
+    if (user?.role === 'employee') {
+      return [
+        { 
+          id: 'overview', 
+          label: 'Übersicht', 
+          icon: BarChart3 
+        },
+        { 
+          id: 'goods-receipt', 
+          label: 'Warenannahmen', 
+          icon: ClipboardList 
+        },
+        { 
+          id: 'goods-receipt-add', 
+          label: 'Erfassen', 
+          icon: Plus 
+        },
+        { 
+          id: 'inventory', 
+          label: 'Lagerbestand', 
+          icon: Package 
+        },
+        { 
+          id: 'customers', 
+          label: 'Kunden', 
+          icon: Users 
+        }
+      ];
+    } else {
+      // ORIGINAL Kunde Navigation
+      return [
+        { 
+          id: 'overview', 
+          label: 'Übersicht', 
+          icon: BarChart3 
+        },
+        { 
+          id: 'itemized', 
+          label: 'Einzelverbindungsnachweis', 
+          icon: FileText 
+        },
+        { 
+          id: 'orders', 
+          label: 'Bestellungen', 
+          icon: Package 
+        },
+        { 
+          id: 'reports', 
+          label: 'Berichte', 
+          icon: TrendingUp 
+        }
+      ];
+    }
   };
 
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat('de-DE').format(value);
-  };
-
-  const getTrendIcon = (trend) => {
-    if (trend > 0) return <TrendingUp size={16} />;
-    if (trend < 0) return <TrendingDown size={16} />;
-    return <Minus size={16} />;
+  // ORIGINAL KPI Cards Funktion
+  const getKPICards = () => {
+    if (!data.kpis) return [];
+    
+    const kpis = data.kpis;
+    
+    return [
+      {
+        label: 'Bestellungen diesen Monat',
+        value: kpis.totalOrders || 0,
+        icon: Package,
+        trend: kpis.ordersTrend,
+        color: '#2563eb',
+        bgColor: '#dbeafe'
+      },
+      {
+        label: 'Bestellungen heute',
+        value: kpis.ordersToday || 0,
+        icon: Clock,
+        color: '#7c3aed',
+        bgColor: '#ede9fe'
+      },
+      {
+        label: 'Offene Sendungen',
+        value: kpis.pendingShipments || 0,
+        icon: Truck,
+        color: '#dc2626',
+        bgColor: '#fecaca'
+      },
+      {
+        label: 'Umsatz diesen Monat',
+        value: `€${(kpis.revenue || 0).toFixed(2)}`,
+        icon: DollarSign,
+        color: '#059669',
+        bgColor: '#d1fae5'
+      },
+      {
+        label: 'Versendete Pakete',
+        value: kpis.packagesShipped || 0,
+        icon: Package,
+        color: '#0891b2',
+        bgColor: '#cffafe'
+      },
+      {
+        label: 'Retourenquote',
+        value: `${kpis.returnRate || 0}%`,
+        icon: TrendingUp,
+        color: '#c2410c',
+        bgColor: '#ffedd5'
+      }
+    ];
   };
 
   const getTrendClass = (trend) => {
@@ -67,65 +192,18 @@ const Dashboard = ({ user, onLogout }) => {
     return 'neutral';
   };
 
-  const getKPICards = () => [
-    {
-      label: 'Bestellungen (Monat)',
-      value: formatNumber(kpis.totalOrders || 0),
-      trend: kpis.ordersTrend || 0,
-      icon: Package,
-      color: '#2a5298',
-      bgColor: '#e8f0ff'
-    },
-    {
-      label: 'Bestellungen heute',
-      value: formatNumber(kpis.ordersToday || 0),
-      icon: TrendingUp,
-      color: '#059669',
-      bgColor: '#d1fae5'
-    },
-    {
-      label: 'Offene Sendungen',
-      value: formatNumber(kpis.pendingShipments || 0),
-      icon: Clock,
-      color: '#dc2626',
-      bgColor: '#fee2e2'
-    },
-    {
-      label: 'Umsatz (Monat)',
-      value: formatCurrency(kpis.revenue || 0),
-      icon: DollarSign,
-      color: '#7c3aed',
-      bgColor: '#ede9fe'
-    },
-    {
-      label: 'Versendete Pakete',
-      value: formatNumber(kpis.packagesShipped || 0),
-      icon: Truck,
-      color: '#ea580c',
-      bgColor: '#fed7aa'
-    },
-    {
-      label: 'Ø Bearbeitungszeit',
-      value: `${kpis.averageProcessingTime || 0} Tage`,
-      icon: Clock,
-      color: '#0891b2',
-      bgColor: '#cffafe'
-    },
-    {
-      label: 'Retourenquote',
-      value: `${kpis.returnRate || 0}%`,
-      icon: PercentIcon,
-      color: '#c2410c',
-      bgColor: '#ffedd5'
-    }
-  ];
+  const getTrendIcon = (trend) => {
+    if (trend > 0) return '↗';
+    if (trend < 0) return '↘';
+    return '→';
+  };
 
-  const renderOverview = () => {
+  const renderContent = () => {
     if (loading) {
       return (
         <div className="loading-container">
-          <BarChart3 className="loading-spinner" />
-          <p>Lade Dashboard-Daten...</p>
+          <div className="loading-spinner">⏳</div>
+          <p>Lade Dashboard...</p>
         </div>
       );
     }
@@ -134,75 +212,48 @@ const Dashboard = ({ user, onLogout }) => {
       return (
         <div className="error-container">
           <p className="error-message">{error}</p>
-          <button onClick={loadKPIs} className="retry-button">
+          <button onClick={loadDashboardData} className="retry-button">
             Erneut versuchen
           </button>
         </div>
       );
     }
 
-    const kpiCards = getKPICards();
+    // === MITARBEITER CONTENT ===
+    if (user?.role === 'employee') {
+      switch (activeSection) {
+        case 'overview':
+          return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
+        case 'goods-receipt':
+          return <GoodsReceiptList data={goodsReceiptData} onRefresh={loadDashboardData} onPhotoClick={setPhotoModal} />;
+        case 'goods-receipt-add':
+          return <GoodsReceiptForm onSuccess={loadDashboardData} />;
+        case 'inventory':
+          return <InventoryView />;
+        case 'customers':
+          return <CustomersView />;
+        default:
+          return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
+      }
+    }
 
-    return (
-      <div className="overview-content">
-        <div className="kpi-grid">
-          {kpiCards.map((kpi, index) => (
-            <div key={index} className="kpi-card">
-              <div className="kpi-header">
-                <div className="kpi-info">
-                  <p className="kpi-label">{kpi.label}</p>
-                  <h3 className="kpi-value">{kpi.value}</h3>
-                  {kpi.trend !== undefined && (
-                    <p className={`kpi-trend ${getTrendClass(kpi.trend)}`}>
-                      {getTrendIcon(kpi.trend)}
-                      {Math.abs(kpi.trend)}% vs. Vormonat
-                    </p>
-                  )}
-                </div>
-                <div 
-                  className="kpi-icon" 
-                  style={{ 
-                    backgroundColor: kpi.bgColor,
-                    color: kpi.color 
-                  }}
-                >
-                  <kpi.icon size={24} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderContent = () => {
-    switch (activeView) {
+    // === ORIGINAL KUNDEN CONTENT ===
+    switch (activeSection) {
       case 'overview':
-        return renderOverview();
+        return <CustomerOverview data={data} onRefresh={loadDashboardData} />;
       case 'itemized':
-        return <ItemizedRecords />;
+        return <ItemizedRecords />; // ORIGINAL KOMPONENTE
       case 'orders':
-        return (
-          <div className="content-placeholder">
-            <h2>Bestellungen</h2>
-            <p>Bestellübersicht wird hier angezeigt...</p>
-          </div>
-        );
+        return <OrdersView data={data} />;
       case 'reports':
-        return (
-          <div className="content-placeholder">
-            <h2>Berichte</h2>
-            <p>Berichte werden hier angezeigt...</p>
-          </div>
-        );
+        return <ReportsView />;
       default:
-        return renderOverview();
+        return <CustomerOverview data={data} onRefresh={loadDashboardData} />;
     }
   };
 
   return (
-    <div className="dashboard">
+    <div className="dashboard-container">
       {/* Header */}
       <header className="dashboard-header">
         <div className="header-content">
@@ -211,7 +262,7 @@ const Dashboard = ({ user, onLogout }) => {
               className="menu-button"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
-              <Menu size={20} />
+              <Menu size={24} />
             </button>
             <img 
               src="/logo192.png" 
@@ -221,19 +272,26 @@ const Dashboard = ({ user, onLogout }) => {
             <div className="divider"></div>
             <h1>Fulfillment Portal</h1>
           </div>
-          
-<div className="header-right">
-  {user && (
-    <div className="user-info">
-      <span className="user-name">
-        {user.company || user.name || 'Benutzer'}
-      </span>
-      <span className="user-number">Kunde: {user.customerNumber}</span>
-    </div>
-  )}
-            <button onClick={onLogout} className="logout-button">
-              <LogOut size={20} />
-            </button>
+          <div className="header-right">
+            <div className="user-info">
+              <div className="user-details">
+                <span className="user-name">
+                  {user?.role === 'employee' ? user.name : (user?.company || user?.name)}
+                </span>
+                <span className="user-number">
+                  {user?.role === 'employee' 
+                    ? `👤 ${user.login}` 
+                    : `🏢 ${user?.customerNumber}`
+                  }
+                </span>
+                <span className="user-role">
+                  {user?.role === 'employee' ? 'Mitarbeiter' : 'Kunde'}
+                </span>
+              </div>
+              <button onClick={onLogout} className="logout-button">
+                <LogOut size={20} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -241,36 +299,18 @@ const Dashboard = ({ user, onLogout }) => {
       {/* Layout */}
       <div className="dashboard-layout">
         {/* Sidebar */}
-        <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
-          <nav>
-            <button
-              className={`nav-item ${activeView === 'overview' ? 'active' : ''}`}
-              onClick={() => setActiveView('overview')}
-            >
-              <BarChart3 />
-              Übersicht
-            </button>
-            <button
-              className={`nav-item ${activeView === 'itemized' ? 'active' : ''}`}
-              onClick={() => setActiveView('itemized')}
-            >
-              <FileText />
-              Einzelverbindungsnachweis
-            </button>
-            <button
-              className={`nav-item ${activeView === 'orders' ? 'active' : ''}`}
-              onClick={() => setActiveView('orders')}
-            >
-              <Package />
-              Bestellungen
-            </button>
-            <button
-              className={`nav-item ${activeView === 'reports' ? 'active' : ''}`}
-              onClick={() => setActiveView('reports')}
-            >
-              <TrendingUp />
-              Berichte
-            </button>
+        <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
+          <nav className="nav-menu">
+            {getNavigationItems().map((item) => (
+              <button
+                key={item.id}
+                className={`nav-item ${activeSection === item.id ? 'active' : ''}`}
+                onClick={() => setActiveSection(item.id)}
+              >
+                <item.icon size={20} />
+                {sidebarOpen && <span>{item.label}</span>}
+              </button>
+            ))}
           </nav>
         </aside>
 
@@ -281,8 +321,296 @@ const Dashboard = ({ user, onLogout }) => {
           </div>
         </main>
       </div>
+
+      {/* Foto-Modal */}
+      {photoModal && (
+        <PhotoModal 
+          photoPath={photoModal} 
+          onClose={() => setPhotoModal(null)} 
+        />
+      )}
     </div>
   );
 };
+
+// === FOTO-MODAL KOMPONENTE ===
+const PhotoModal = ({ photoPath, onClose }) => (
+  <div className="photo-modal-overlay" onClick={onClose}>
+    <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
+      <button className="photo-modal-close" onClick={onClose}>
+        <X size={24} />
+      </button>
+      <img 
+        src={`http://localhost:5000/${photoPath.replace(/\\/g, '/')}`} 
+        alt="Warenannahme Foto" 
+        className="photo-modal-image"
+      />
+    </div>
+  </div>
+);
+
+// === ORIGINAL KUNDEN KOMPONENTEN ===
+const CustomerOverview = ({ data, onRefresh }) => {
+  if (!data.kpis) {
+    return (
+      <div>
+        <div className="section-header">
+          <h2>Dashboard</h2>
+          <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
+        </div>
+        <p>Lade Daten...</p>
+      </div>
+    );
+  }
+
+  const kpiCards = [
+    {
+      label: 'Bestellungen diesen Monat',
+      value: data.kpis.totalOrders || 0,
+      icon: Package,
+      trend: data.kpis.ordersTrend,
+      color: '#2563eb',
+      bgColor: '#dbeafe'
+    },
+    {
+      label: 'Bestellungen heute',
+      value: data.kpis.ordersToday || 0,
+      icon: Clock,
+      color: '#7c3aed',
+      bgColor: '#ede9fe'
+    },
+    {
+      label: 'Offene Sendungen',
+      value: data.kpis.pendingShipments || 0,
+      icon: Truck,
+      color: '#dc2626',
+      bgColor: '#fecaca'
+    },
+    {
+      label: 'Umsatz diesen Monat',
+      value: `€${(data.kpis.revenue || 0).toFixed(2)}`,
+      icon: DollarSign,
+      color: '#059669',
+      bgColor: '#d1fae5'
+    },
+    {
+      label: 'Versendete Pakete',
+      value: data.kpis.packagesShipped || 0,
+      icon: Package,
+      color: '#0891b2',
+      bgColor: '#cffafe'
+    },
+    {
+      label: 'Retourenquote',
+      value: `${data.kpis.returnRate || 0}%`,
+      icon: TrendingUp,
+      color: '#c2410c',
+      bgColor: '#ffedd5'
+    }
+  ];
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Dashboard</h2>
+        <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
+      </div>
+      
+      <div className="kpi-grid">
+        {kpiCards.map((kpi, index) => (
+          <div key={index} className="kpi-card">
+            <div className="kpi-header">
+              <div className="kpi-info">
+                <p className="kpi-label">{kpi.label}</p>
+                <h3 className="kpi-value">{kpi.value}</h3>
+                {kpi.trend !== undefined && (
+                  <p className={`kpi-trend ${kpi.trend > 0 ? 'positive' : kpi.trend < 0 ? 'negative' : 'neutral'}`}>
+                    {kpi.trend > 0 ? '↗' : kpi.trend < 0 ? '↘' : '→'}
+                    {Math.abs(kpi.trend)}% vs. Vormonat
+                  </p>
+                )}
+              </div>
+              <div 
+                className="kpi-icon" 
+                style={{ 
+                  backgroundColor: kpi.bgColor,
+                  color: kpi.color 
+                }}
+              >
+                <kpi.icon size={24} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const OrdersView = ({ data }) => (
+  <div>
+    <div className="section-header">
+      <h2>Bestellungen</h2>
+    </div>
+    <p>Bestellübersicht wird hier angezeigt...</p>
+  </div>
+);
+
+const ReportsView = () => (
+  <div>
+    <div className="section-header">
+      <h2>Berichte</h2>
+    </div>
+    <p>Berichte werden hier angezeigt...</p>
+  </div>
+);
+
+// === MITARBEITER KOMPONENTEN ===
+const EmployeeOverview = ({ data, onRefresh }) => (
+  <div>
+    <div className="section-header">
+      <h2>Mitarbeiter Dashboard</h2>
+      <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
+    </div>
+    
+    {data.stats && (
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-header">
+            <h3>Heutige Anlieferungen</h3>
+            <ClipboardList className="kpi-icon" />
+          </div>
+          <div className="kpi-value">{data.stats.HeutigeAnlieferungen || 0}</div>
+          <div className="kpi-subtitle">Anlieferungen heute</div>
+        </div>
+        
+        <div className="kpi-card">
+          <div className="kpi-header">
+            <h3>Offene Einlagerungen</h3>
+            <AlertCircle className="kpi-icon" />
+          </div>
+          <div className="kpi-value">{data.stats.OffeneEinlagerungen || 0}</div>
+          <div className="kpi-subtitle">Warten auf Einlagerung</div>
+        </div>
+        
+        <div className="kpi-card">
+          <div className="kpi-header">
+            <h3>In Bearbeitung</h3>
+            <Package className="kpi-icon" />
+          </div>
+          <div className="kpi-value">{data.stats.InBearbeitung || 0}</div>
+          <div className="kpi-subtitle">Werden eingelagert</div>
+        </div>
+        
+        <div className="kpi-card">
+          <div className="kpi-header">
+            <h3>Gesamte Packstücke</h3>
+            <Truck className="kpi-icon" />
+          </div>
+          <div className="kpi-value">{data.stats.GesamtPackstuecke || 0}</div>
+          <div className="kpi-subtitle">Letzter Monat</div>
+        </div>
+      </div>
+    )}
+    
+    <div className="recent-activities">
+      <h3>Neueste Warenannahmen</h3>
+      {data.list && data.list.length > 0 ? (
+        <div className="activity-list">
+          {data.list.slice(0, 5).map((item) => (
+            <div key={item.kWarenannahme} className="activity-item">
+              <Clock size={16} />
+              <span>
+                {new Date(item.dDatum).toLocaleDateString()} - 
+                {item.nAnzahlPackstuecke} {item.cPackstueckArt} 
+                für {item.KundenFirma} ({item.cStatus})
+              </span>
+              {item.cFotoPath && (
+                <Camera size={14} className="photo-indicator" />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p>Keine Warenannahmen vorhanden</p>
+      )}
+    </div>
+  </div>
+);
+
+const GoodsReceiptList = ({ data, onRefresh, onPhotoClick }) => (
+  <div>
+    <div className="section-header">
+      <h2>Warenannahmen Übersicht</h2>
+      <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
+    </div>
+    
+    {data.list && data.list.length > 0 ? (
+      <div className="goods-receipt-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Kunde</th>
+              <th>Transporteur</th>
+              <th>Packstücke</th>
+              <th>Status</th>
+              <th>Foto</th>
+              <th>Aktionen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.list.map((item) => (
+              <tr key={item.kWarenannahme}>
+                <td>{new Date(item.dDatum).toLocaleDateString()}</td>
+                <td>{item.KundenFirma}</td>
+                <td>{item.cTransporteur}</td>
+                <td>{item.nAnzahlPackstuecke} {item.cPackstueckArt}</td>
+                <td>
+                  <span className={`status-badge ${item.cStatus.toLowerCase().replace(' ', '-')}`}>
+                    {item.cStatus}
+                  </span>
+                </td>
+                <td>
+                  {item.cFotoPath ? (
+                    <button 
+                      className="photo-button"
+                      onClick={() => onPhotoClick(item.cFotoPath)}
+                      title="Foto anzeigen"
+                    >
+                      <Image size={16} />
+                    </button>
+                  ) : (
+                    <span className="no-photo">—</span>
+                  )}
+                </td>
+                <td>
+                  <button className="action-button">👁️ Details</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <p>Keine Warenannahmen vorhanden</p>
+    )}
+  </div>
+);
+
+// PLATZHALTER-KOMPONENTEN
+const InventoryView = () => (
+  <div>
+    <h2>Lagerbestand</h2>
+    <p>Hier wird der aktuelle Lagerbestand angezeigt...</p>
+  </div>
+);
+
+const CustomersView = () => (
+  <div>
+    <h2>Kunden Übersicht</h2>
+    <p>Hier werden alle Kunden und deren Status angezeigt...</p>
+  </div>
+);
 
 export default Dashboard;
