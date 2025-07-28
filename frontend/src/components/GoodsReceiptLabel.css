@@ -1,0 +1,283 @@
+/* frontend/src/components/GoodsReceiptLabel.css */
+
+/* Modal Container */
+.label-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.label-preview-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Header */
+.label-preview-header {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label-preview-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.label-preview-header .close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.label-preview-header .close-button:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+/* Body */
+.label-preview-body {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(90vh - 80px);
+}
+
+/* Etikett Vorschau */
+.label-preview-container {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.label-preview {
+  background: white;
+  width: 450px;
+  height: 300px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+}
+
+/* Etikett Titel */
+.label-title {
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0;
+  color: #333;
+  letter-spacing: 1px;
+}
+
+/* Etikett Inhalt */
+.label-content {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* QR Code */
+.label-qr {
+  flex-shrink: 0;
+}
+
+.label-qr img {
+  width: 120px;
+  height: 120px;
+  border: 1px solid #e0e0e0;
+  padding: 5px;
+  background: white;
+}
+
+/* Etikett Info */
+.label-info {
+  flex: 1;
+}
+
+.label-number {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1976d2;
+  margin-bottom: 15px;
+}
+
+.label-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label-row {
+  display: flex;
+  font-size: 12px;
+}
+
+.label-field {
+  font-weight: bold;
+  width: 100px;
+  color: #666;
+}
+
+.label-value {
+  flex: 1;
+  color: #333;
+}
+
+.label-value.status {
+  font-weight: bold;
+  color: #1976d2;
+}
+
+/* JTL Nummer */
+.label-jtl {
+  position: absolute;
+  bottom: 40px;
+  left: 20px;
+  font-size: 11px;
+  font-style: italic;
+  color: #666;
+}
+
+/* Footer */
+.label-footer {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  font-size: 10px;
+  color: #999;
+  text-align: left;
+}
+
+/* Aktionen */
+.label-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.print-button {
+  background: #1976d2;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.print-button:hover:not(:disabled) {
+  background: #1565c0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+.print-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  background: #f0f0f0;
+  color: #666;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.cancel-button:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+/* Animationen */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .label-preview {
+    width: 150mm;
+    height: 100mm;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+    padding: 10mm;
+  }
+  
+  .label-title {
+    font-size: 18pt;
+    margin-bottom: 5mm;
+  }
+  
+  .label-qr img {
+    width: 35mm;
+    height: 35mm;
+  }
+  
+  .label-number {
+    font-size: 16pt;
+  }
+  
+  .label-row {
+    font-size: 10pt;
+  }
+}

@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.js - ORIGINAL WIEDERHERGESTELLT
+// frontend/src/components/Dashboard.js - MIT ETIKETTENDRUCK UND SUCHE/FILTER
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
@@ -19,10 +19,14 @@ import {
   AlertCircle,
   Camera,
   Image,
-  X
+  X,
+  Search,
+  Filter
 } from 'lucide-react';
 import { dashboardAPI, goodsReceiptAPI } from '../services/api';
 import GoodsReceiptForm from './GoodsReceiptForm';
+import GoodsReceiptDetailsModal from './GoodsReceiptDetailsModal';
+import GoodsReceiptLabel from './GoodsReceiptLabel'; // NEU: Import für Etikettendruck
 import ItemizedRecords from './ItemizedRecords'; // ORIGINAL KOMPONENTE
 import './Dashboard.css';
 
@@ -33,6 +37,8 @@ const Dashboard = ({ user, onLogout }) => {
   const [goodsReceiptData, setGoodsReceiptData] = useState({});
   const [loading, setLoading] = useState(true);
   const [photoModal, setPhotoModal] = useState(null);
+  const [selectedGoodsReceipt, setSelectedGoodsReceipt] = useState(null); // NEU: für Details-Modal
+  const [labelPrintData, setLabelPrintData] = useState(null); // NEU: für Etikettendruck
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -225,7 +231,15 @@ const Dashboard = ({ user, onLogout }) => {
         case 'overview':
           return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
         case 'goods-receipt':
-          return <GoodsReceiptList data={goodsReceiptData} onRefresh={loadDashboardData} onPhotoClick={setPhotoModal} />;
+          return (
+            <GoodsReceiptList 
+              data={goodsReceiptData} 
+              onRefresh={loadDashboardData} 
+              onPhotoClick={setPhotoModal}
+              onDetailsClick={setSelectedGoodsReceipt}
+              onLabelPrint={setLabelPrintData}
+            />
+          );
         case 'goods-receipt-add':
           return <GoodsReceiptForm onSuccess={loadDashboardData} />;
         case 'inventory':
@@ -327,6 +341,28 @@ const Dashboard = ({ user, onLogout }) => {
         <PhotoModal 
           photoPath={photoModal} 
           onClose={() => setPhotoModal(null)} 
+        />
+      )}
+
+      {/* Details-Modal NEU */}
+      {selectedGoodsReceipt && (
+        <GoodsReceiptDetailsModal
+          goodsReceiptId={selectedGoodsReceipt}
+          onClose={() => setSelectedGoodsReceipt(null)}
+          onUpdate={loadDashboardData}
+          onPhotoClick={setPhotoModal}
+        />
+      )}
+
+      {/* Etiketten-Modal NEU */}
+      {labelPrintData && (
+        <GoodsReceiptLabel
+          goodsReceipt={labelPrintData}
+          onPrint={() => {
+            alert('Etikett wurde zum Drucker gesendet!');
+            setLabelPrintData(null);
+          }}
+          onClose={() => setLabelPrintData(null)}
         />
       )}
     </div>
@@ -538,65 +574,205 @@ const EmployeeOverview = ({ data, onRefresh }) => (
   </div>
 );
 
-const GoodsReceiptList = ({ data, onRefresh, onPhotoClick }) => (
-  <div>
-    <div className="section-header">
-      <h2>Warenannahmen Übersicht</h2>
-      <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
-    </div>
-    
-    {data.list && data.list.length > 0 ? (
-      <div className="goods-receipt-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Datum</th>
-              <th>Kunde</th>
-              <th>Transporteur</th>
-              <th>Packstücke</th>
-              <th>Status</th>
-              <th>Foto</th>
-              <th>Aktionen</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.list.map((item) => (
-              <tr key={item.kWarenannahme}>
-                <td>{new Date(item.dDatum).toLocaleDateString()}</td>
-                <td>{item.KundenFirma}</td>
-                <td>{item.cTransporteur}</td>
-                <td>{item.nAnzahlPackstuecke} {item.cPackstueckArt}</td>
-                <td>
-                  <span className={`status-badge ${item.cStatus.toLowerCase().replace(' ', '-')}`}>
-                    {item.cStatus}
-                  </span>
-                </td>
-                <td>
-                  {item.cFotoPath ? (
-                    <button 
-                      className="photo-button"
-                      onClick={() => onPhotoClick(item.cFotoPath)}
-                      title="Foto anzeigen"
-                    >
-                      <Image size={16} />
-                    </button>
-                  ) : (
-                    <span className="no-photo">—</span>
-                  )}
-                </td>
-                <td>
-                  <button className="action-button">👁️ Details</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+// ERWEITERTE GoodsReceiptList MIT SUCHE UND FILTER
+const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLabelPrint }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('alle');
+  const [filteredData, setFilteredData] = useState([]);
+
+  // Filter-Logik
+  useEffect(() => {
+    if (!data.list) {
+      setFilteredData([]);
+      return;
+    }
+
+    let filtered = [...data.list];
+
+    // Suchfilter (ID oder Kunde)
+    if (searchTerm) {
+      filtered = filtered.filter(item => 
+        item.kWarenannahme.toString().includes(searchTerm) ||
+        (item.KundenFirma && item.KundenFirma.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.cTransporteur && item.cTransporteur.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    // Status-Filter
+    if (statusFilter !== 'alle') {
+      filtered = filtered.filter(item => item.cStatus === statusFilter);
+    }
+
+    setFilteredData(filtered);
+  }, [data.list, searchTerm, statusFilter]);
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Warenannahmen Übersicht</h2>
+        <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
       </div>
-    ) : (
-      <p>Keine Warenannahmen vorhanden</p>
-    )}
-  </div>
-);
+      
+      {/* Such- und Filterbereich */}
+      <div className="search-filter-container" style={{
+        display: 'flex',
+        gap: '16px',
+        marginBottom: '20px',
+        padding: '16px',
+        background: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Search size={20} style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: '#666'
+          }} />
+          <input
+            type="text"
+            placeholder="Suche nach ID, Kunde oder Transporteur..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px 10px 10px 40px',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '14px'
+            }}
+          />
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Filter size={20} style={{ color: '#666' }} />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{
+              padding: '10px 16px',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '14px',
+              background: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="alle">Alle Status</option>
+            <option value="Eingegangen">Eingegangen</option>
+            <option value="In Einlagerung">In Einlagerung</option>
+            <option value="Eingelagert">Eingelagert</option>
+          </select>
+        </div>
+      </div>
+      
+      {/* Ergebnisinfo */}
+      {searchTerm || statusFilter !== 'alle' ? (
+        <div style={{
+          marginBottom: '16px',
+          padding: '8px 16px',
+          background: '#f0f0f0',
+          borderRadius: '4px',
+          fontSize: '14px',
+          color: '#666'
+        }}>
+          {filteredData.length} von {data.list?.length || 0} Einträgen gefunden
+        </div>
+      ) : null}
+      
+      {filteredData.length > 0 ? (
+        <div className="goods-receipt-table">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Datum</th>
+                <th>Kunde</th>
+                <th>Transporteur</th>
+                <th>Packstücke</th>
+                <th>Status</th>
+                <th>Foto</th>
+                <th>Aktionen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((item) => (
+                <tr key={item.kWarenannahme}>
+                  <td style={{ fontWeight: 'bold', color: '#1976d2' }}>
+                    WA-{item.kWarenannahme}
+                  </td>
+                  <td>{new Date(item.dDatum).toLocaleDateString()}</td>
+                  <td>{item.KundenFirma || 'Unbekannt'}</td>
+                  <td>{item.cTransporteur || 'Unbekannt'}</td>
+                  <td>{item.nAnzahlPackstuecke} {item.cPackstueckArt}</td>
+                  <td>
+                    <span className={`status-badge ${item.cStatus.toLowerCase().replace(' ', '-')}`}>
+                      {item.cStatus}
+                    </span>
+                  </td>
+                  <td>
+                    {item.cFotoPath ? (
+                      <button 
+                        className="photo-button"
+                        onClick={() => onPhotoClick(item.cFotoPath)}
+                        title="Foto anzeigen"
+                      >
+                        <Image size={16} />
+                      </button>
+                    ) : (
+                      <span className="no-photo">—</span>
+                    )}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        className="action-button"
+                        onClick={() => onDetailsClick(item.kWarenannahme)}
+                        title="Details anzeigen"
+                      >
+                        👁️
+                      </button>
+                      <button 
+                        className="action-button"
+                        onClick={() => onLabelPrint(item)}
+                        title="Etikett drucken"
+                      >
+                        🖨️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          background: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          {searchTerm || statusFilter !== 'alle' ? (
+            <>
+              <p style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
+                Keine Warenannahmen gefunden
+              </p>
+              <p style={{ fontSize: '14px', color: '#999' }}>
+                Versuchen Sie es mit anderen Suchbegriffen oder Filtern
+              </p>
+            </>
+          ) : (
+            <p>Keine Warenannahmen vorhanden</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // PLATZHALTER-KOMPONENTEN
 const InventoryView = () => (

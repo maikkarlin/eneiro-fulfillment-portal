@@ -1,8 +1,9 @@
-// frontend/src/components/GoodsReceiptForm.js - NEU
+// frontend/src/components/GoodsReceiptForm.js
 import React, { useState, useEffect } from 'react';
 import { Camera, Save, X, Upload } from 'lucide-react';
 import './GoodsReceiptForm.css';
 import { goodsReceiptAPI, customersAPI } from '../services/api';
+import GoodsReceiptLabel from './GoodsReceiptLabel';
 
 const GoodsReceiptForm = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -23,26 +24,28 @@ const GoodsReceiptForm = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [showLabelAfterSave, setShowLabelAfterSave] = useState(false);
+  const [savedReceiptData, setSavedReceiptData] = useState(null);
 
-useEffect(() => {
-  // Echte Fulfillment-Kunden laden
-  const loadCustomers = async () => {
-    try {
-      console.log('👥 Lade Fulfillment-Kunden...');
-      const response = await customersAPI.getAll();
-      console.log('✅ Kunden geladen:', response.data);
-      setCustomers(response.data);
-    } catch (error) {
-      console.error('❌ Fehler beim Laden der Kunden:', error);
-      // Fallback: Mock-Daten bei Fehler
-      setCustomers([
-        { kKunde: 1, cKundenNr: 'K12345', cFirma: 'Musterfirma GmbH' }
-      ]);
-    }
-  };
-  
-  loadCustomers();
-}, []);
+  useEffect(() => {
+    // Echte Fulfillment-Kunden laden
+    const loadCustomers = async () => {
+      try {
+        console.log('👥 Lade Fulfillment-Kunden...');
+        const response = await customersAPI.getAll();
+        console.log('✅ Kunden geladen:', response.data);
+        setCustomers(response.data);
+      } catch (error) {
+        console.error('❌ Fehler beim Laden der Kunden:', error);
+        // Fallback: Mock-Daten bei Fehler
+        setCustomers([
+          { kKunde: 1, cKundenNr: 'K12345', cFirma: 'Musterfirma GmbH' }
+        ]);
+      }
+    };
+    
+    loadCustomers();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -90,12 +93,30 @@ useEffect(() => {
         throw new Error('Anzahl Packstücke muss mindestens 1 sein');
       }
 
-      const response = await goodsReceiptAPI.create(formData);
+      // FormData erstellen für File-Upload
+      const submitData = new FormData();
+      
+      // Alle Felder anhängen
+      Object.keys(formData).forEach(key => {
+        if (key === 'photo' && formData[key]) {
+          submitData.append('foto', formData[key]);
+        } else if (key === 'bPalettentausch') {
+          submitData.append(key, formData[key] ? 'true' : 'false');
+        } else {
+          submitData.append(key, formData[key] || '');
+        }
+      });
+
+      const response = await goodsReceiptAPI.create(submitData);
       
       console.log('✅ Warenannahme erstellt:', response.data);
       
       // Erfolg anzeigen
       alert('Warenannahme erfolgreich erfasst!');
+      
+      // Daten für Etikettendruck speichern
+      setSavedReceiptData(response.data);
+      setShowLabelAfterSave(true);
       
       // Formular zurücksetzen
       setFormData({
@@ -322,6 +343,22 @@ useEffect(() => {
           </button>
         </div>
       </form>
+
+      {/* Etiketten-Modal */}
+      {showLabelAfterSave && savedReceiptData && (
+        <GoodsReceiptLabel
+          goodsReceipt={savedReceiptData}
+          onPrint={() => {
+            alert('Etikett wurde zum Drucker gesendet!');
+            setShowLabelAfterSave(false);
+            setSavedReceiptData(null);
+          }}
+          onClose={() => {
+            setShowLabelAfterSave(false);
+            setSavedReceiptData(null);
+          }}
+        />
+      )}
     </div>
   );
 };
