@@ -127,6 +127,17 @@ export const goodsReceiptAPI = {
   // Dashboard-Statistiken
   getStats: () => 
     api.get('/goods-receipt/stats/dashboard'),
+
+    // NEUE FUNKTIONEN FÜR KUNDEN:
+  
+  // Alle Warenannahmen für angemeldeten Kunden abrufen
+  getCustomerReceipts: () => 
+    api.get('/goods-receipt/customer'),
+  
+  // Einzelne Warenannahme für Kunden abrufen
+  getCustomerReceiptById: (id) => 
+    api.get(`/goods-receipt/customer/${id}`),
+
 };
 
 // Kunden API - NEU
@@ -134,5 +145,6 @@ export const customersAPI = {
   getAll: () => 
     api.get('/customers'),
 };
+
 
 export default api;

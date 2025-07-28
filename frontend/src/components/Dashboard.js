@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.js - MIT ETIKETTENDRUCK UND SUCHE/FILTER
+// frontend/src/components/Dashboard.js - MIT ETIKETTENDRUCK UND SUCHE/FILTER UND KUNDEN-WARENANNAHMEN
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
@@ -27,6 +27,7 @@ import { dashboardAPI, goodsReceiptAPI } from '../services/api';
 import GoodsReceiptForm from './GoodsReceiptForm';
 import GoodsReceiptDetailsModal from './GoodsReceiptDetailsModal';
 import GoodsReceiptLabel from './GoodsReceiptLabel'; // NEU: Import für Etikettendruck
+import CustomerGoodsReceipts from './CustomerGoodsReceipts'; // NEU: Import für Kunden-Warenannahmen
 import ItemizedRecords from './ItemizedRecords'; // ORIGINAL KOMPONENTE
 import './Dashboard.css';
 
@@ -113,12 +114,17 @@ const Dashboard = ({ user, onLogout }) => {
         }
       ];
     } else {
-      // ORIGINAL Kunde Navigation
+      // ERWEITERTE Kunde Navigation
       return [
         { 
           id: 'overview', 
           label: 'Übersicht', 
           icon: BarChart3 
+        },
+        { 
+          id: 'goods-receipts',  // NEU
+          label: 'Warenannahmen', // NEU
+          icon: Package // NEU
         },
         { 
           id: 'itemized', 
@@ -251,10 +257,12 @@ const Dashboard = ({ user, onLogout }) => {
       }
     }
 
-    // === ORIGINAL KUNDEN CONTENT ===
+    // === ERWEITERTE KUNDEN CONTENT ===
     switch (activeSection) {
       case 'overview':
         return <CustomerOverview data={data} onRefresh={loadDashboardData} />;
+      case 'goods-receipts':  // NEU
+        return <CustomerGoodsReceipts />; // NEU
       case 'itemized':
         return <ItemizedRecords />; // ORIGINAL KOMPONENTE
       case 'orders':
