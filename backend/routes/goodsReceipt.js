@@ -219,10 +219,24 @@ router.post('/', authenticateToken, upload.single('photo'), async (req, res) => 
     // Benutzer aus Token ermitteln - erstmal Fallback
     const kBenutzer = req.user.id || 1; // Fallback zu Admin
     
+    // Datum und Zeit richtig formatieren für SQL Server
+    const currentDate = new Date();
+    const dateValue = req.body.dDatum || currentDate.toISOString().split('T')[0];
+    
+    // Zeit als JavaScript Date Object erstellen für korrekte SQL Server Konvertierung
+    let timeValue;
+    if (req.body.tUhrzeit) {
+      const [hours, minutes] = req.body.tUhrzeit.split(':');
+      timeValue = new Date();
+      timeValue.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    } else {
+      timeValue = currentDate;
+    }
+
     // Daten vorbereiten
     const insertData = {
-      dDatum: req.body.dDatum || new Date().toISOString().split('T')[0],
-      tUhrzeit: req.body.tUhrzeit || new Date().toTimeString().slice(0, 8),
+      dDatum: dateValue,
+      tUhrzeit: timeValue,
       kKunde: kKunde,
       kBenutzer: kBenutzer,
       cTransporteur: req.body.cTransporteur,
@@ -406,6 +420,121 @@ router.get('/stats/dashboard', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('❌ Fehler beim Laden der Statistiken:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Statistiken' });
+  }
+});
+
+// === KUNDEN-SPEZIFISCHE ROUTES ===
+
+// Alle Warenannahmen für angemeldeten Kunden abrufen (nur Fulfillment-Kunden)
+router.get('/customer', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ error: 'Nur für Kunden' });
+    }
+
+    console.log('📦 Lade Warenannahmen für Kunde:', req.user.customerNumber);
+
+    // Hole kKunde basierend auf der Kundennummer UND prüfe kLabel = 2
+    const pool = await getConnection();
+    const customerResult = await pool.request()
+      .input('customerNumber', sql.NVarChar, req.user.customerNumber)
+      .query(`
+        SELECT k.kKunde 
+        FROM tKunde k
+        LEFT JOIN tKundeLabel kl ON k.kKunde = kl.kKunde
+        WHERE k.cKundenNr = @customerNumber AND kl.kLabel = 2
+      `);
+
+    if (customerResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Fulfillment-Kunde nicht gefunden' });
+    }
+
+    const kKunde = customerResult.recordset[0].kKunde;
+
+    // Hole alle Warenannahmen für diesen Fulfillment-Kunden
+    const warenannahmenResult = await pool.request()
+      .input('kKunde', sql.Int, kKunde)
+      .query(`
+        SELECT 
+          w.*,
+          a.cFirma as KundenFirma,
+          b.cName as MitarbeiterName
+        FROM tWarenannahme w
+        LEFT JOIN tKunde k ON w.kKunde = k.kKunde
+        LEFT JOIN tAdresse a ON w.kKunde = a.kKunde AND a.nStandard = 1
+        LEFT JOIN tBenutzer b ON w.kBenutzer = b.kBenutzer
+        WHERE w.kKunde = @kKunde
+        ORDER BY w.dDatum DESC, w.tUhrzeit DESC
+      `);
+
+    console.log(`✅ ${warenannahmenResult.recordset.length} Warenannahmen für Kunde gefunden`);
+    res.json(warenannahmenResult.recordset);
+    
+  } catch (error) {
+    console.error('❌ Fehler beim Abrufen der Kunden-Warenannahmen:', error);
+    res.status(500).json({ error: 'Serverfehler beim Abrufen der Warenannahmen' });
+  }
+});
+
+// Einzelne Warenannahme für Kunden abrufen (nur Fulfillment-Kunden)
+router.get('/customer/:id', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ error: 'Nur für Kunden' });
+    }
+
+    const { id } = req.params;
+    const kWarenannahme = parseInt(id);
+    
+    console.log('📦 Lade Warenannahme für Kunde. Raw ID:', id, 'Parsed ID:', kWarenannahme);
+    
+    if (isNaN(kWarenannahme)) {
+      console.error('❌ Ungültige Warenannahme-ID:', id);
+      return res.status(400).json({ error: 'Ungültige Warenannahme-ID' });
+    }
+
+    // Hole kKunde basierend auf der Kundennummer UND prüfe kLabel = 2
+    const pool = await getConnection();
+    const customerResult = await pool.request()
+      .input('customerNumber', sql.NVarChar, req.user.customerNumber)
+      .query(`
+        SELECT k.kKunde 
+        FROM tKunde k
+        LEFT JOIN tKundeLabel kl ON k.kKunde = kl.kKunde
+        WHERE k.cKundenNr = @customerNumber AND kl.kLabel = 2
+      `);
+
+    if (customerResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Fulfillment-Kunde nicht gefunden' });
+    }
+
+    const kKunde = customerResult.recordset[0].kKunde;
+
+    // Hole Warenannahme mit Prüfung, ob sie zu diesem Fulfillment-Kunden gehört
+    const result = await pool.request()
+      .input('kWarenannahme', sql.Int, kWarenannahme)
+      .input('kKunde', sql.Int, kKunde)
+      .query(`
+        SELECT 
+          w.*,
+          a.cFirma as KundenFirma,
+          b.cName as MitarbeiterName
+        FROM tWarenannahme w
+        LEFT JOIN tKunde k ON w.kKunde = k.kKunde
+        LEFT JOIN tAdresse a ON w.kKunde = a.kKunde AND a.nStandard = 1
+        LEFT JOIN tBenutzer b ON w.kBenutzer = b.kBenutzer
+        WHERE w.kWarenannahme = @kWarenannahme AND w.kKunde = @kKunde
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Warenannahme nicht gefunden oder keine Berechtigung' });
+    }
+
+    res.json(result.recordset[0]);
+    
+  } catch (error) {
+    console.error('❌ Fehler beim Abrufen der Warenannahme:', error);
+    res.status(500).json({ error: 'Serverfehler beim Abrufen der Warenannahme' });
   }
 });
 

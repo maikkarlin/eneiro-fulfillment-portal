@@ -1,392 +1,266 @@
 // frontend/src/components/CustomerGoodsReceipts.js
 import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  Calendar, 
-  Truck, 
-  Camera,
-  Eye,
-  Search,
-  Filter,
-  X,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Image,
-  FileText
-} from 'lucide-react';
+import { Package, Clock, CheckCircle, AlertCircle, Camera, Eye } from 'lucide-react';
 import { goodsReceiptAPI } from '../services/api';
 import './CustomerGoodsReceipts.css';
 
 const CustomerGoodsReceipts = () => {
   const [receipts, setReceipts] = useState([]);
-  const [filteredReceipts, setFilteredReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [photoModal, setPhotoModal] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('alle');
 
   useEffect(() => {
     loadCustomerReceipts();
   }, []);
 
-  useEffect(() => {
-    filterReceipts();
-  }, [receipts, searchTerm, statusFilter]);
-
   const loadCustomerReceipts = async () => {
     try {
       setLoading(true);
-      const response = await goodsReceiptAPI.getCustomerReceipts();
-      setReceipts(response.data);
       setError('');
+      
+      console.log('📦 Lade Kunden-Warenannahmen...');
+      const response = await goodsReceiptAPI.getCustomerReceipts();
+      
+      console.log('✅ Kunden-Warenannahmen geladen:', response.data);
+      setReceipts(response.data);
+      
     } catch (err) {
-      console.error('Fehler beim Laden der Warenannahmen:', err);
-      setError('Fehler beim Laden Ihrer Warenannahmen');
+      console.error('❌ Fehler beim Laden der Warenannahmen:', err);
+      setError('Fehler beim Laden Ihrer Warenannahmen: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const filterReceipts = () => {
-    let filtered = [...receipts];
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      'Eingegangen': { icon: Clock, color: 'blue', label: 'Eingegangen' },
+      'In Einlagerung': { icon: Package, color: 'orange', label: 'In Einlagerung' },
+      'Eingelagert': { icon: CheckCircle, color: 'green', label: 'Eingelagert' }
+    };
 
-    // Suchfilter
-    if (searchTerm) {
-      filtered = filtered.filter(item =>
-        item.kWarenannahme.toString().includes(searchTerm) ||
-        (item.cTransporteur && item.cTransporteur.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.cPackstueckArt && item.cPackstueckArt.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-    }
+    const config = statusConfig[status] || { icon: AlertCircle, color: 'gray', label: status };
+    const Icon = config.icon;
 
-    // Status-Filter
-    if (statusFilter !== 'alle') {
-      filtered = filtered.filter(item => item.cStatus === statusFilter);
-    }
-
-    setFilteredReceipts(filtered);
+    return (
+      <div className={`status-badge ${config.color}`}>
+        <Icon size={14} />
+        {config.label}
+      </div>
+    );
   };
 
-  const loadReceiptDetails = async (id) => {
+  const formatDate = (dateStr) => {
     try {
-      const response = await goodsReceiptAPI.getCustomerReceiptById(id);
-      setSelectedReceipt(response.data);
-    } catch (err) {
-      console.error('Fehler beim Laden der Details:', err);
-      alert('Fehler beim Laden der Details');
+      return new Date(dateStr).toLocaleDateString('de-DE');
+    } catch {
+      return dateStr;
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'Eingegangen':
-        return <AlertCircle size={16} />;
-      case 'In Einlagerung':
-        return <Clock size={16} />;
-      case 'Eingelagert':
-        return <CheckCircle size={16} />;
-      default:
-        return <Package size={16} />;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Eingegangen':
-        return '#1976d2';
-      case 'In Einlagerung':
-        return '#f57c00';
-      case 'Eingelagert':
-        return '#388e3c';
-      default:
-        return '#666';
+  const formatTime = (timeStr) => {
+    try {
+      if (typeof timeStr === 'string' && timeStr.includes(':')) {
+        return timeStr.slice(0, 5); // "HH:MM"
+      }
+      return timeStr;
+    } catch {
+      return timeStr;
     }
   };
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner">⏳</div>
-        <p>Lade Ihre Warenannahmen...</p>
+      <div className="customer-receipts-container">
+        <div className="loading-spinner">
+          <Package size={48} />
+          <p>Lade Ihre Warenannahmen...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="error-container">
-        <p className="error-message">{error}</p>
-        <button onClick={loadCustomerReceipts} className="retry-button">
-          Erneut versuchen
-        </button>
+      <div className="customer-receipts-container">
+        <div className="error-card">
+          <AlertCircle size={48} />
+          <h3>Fehler beim Laden</h3>
+          <p>{error}</p>
+          <button onClick={loadCustomerReceipts} className="retry-button">
+            Erneut versuchen
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="customer-goods-receipts">
-      <div className="section-header">
-        <h2>Meine Warenannahmen</h2>
-        <button onClick={loadCustomerReceipts} className="refresh-button">
-          🔄 Aktualisieren
-        </button>
+    <div className="customer-receipts-container">
+      <div className="receipts-header">
+        <h2>Ihre Warenannahmen</h2>
+        <p>Hier sehen Sie alle Ihre eingehenden Lieferungen im Überblick</p>
       </div>
 
-      {/* Such- und Filterbereich */}
-      <div className="search-filter-container">
-        <div className="search-input-wrapper">
-          <Search size={20} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Suche nach ID, Transporteur oder Packstückart..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
+      {receipts.length === 0 ? (
+        <div className="empty-state">
+          <Package size={64} />
+          <h3>Keine Warenannahmen vorhanden</h3>
+          <p>Es wurden noch keine Lieferungen für Sie erfasst.</p>
         </div>
-        
-        <div className="filter-wrapper">
-          <Filter size={20} className="filter-icon" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="filter-select"
-          >
-            <option value="alle">Alle Status</option>
-            <option value="Eingegangen">Eingegangen</option>
-            <option value="In Einlagerung">In Einlagerung</option>
-            <option value="Eingelagert">Eingelagert</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Ergebnisinfo */}
-      {(searchTerm || statusFilter !== 'alle') && (
-        <div className="results-info">
-          {filteredReceipts.length} von {receipts.length} Warenannahmen gefunden
-        </div>
-      )}
-
-      {/* Karten-Ansicht für bessere Übersicht */}
-      {filteredReceipts.length > 0 ? (
+      ) : (
         <div className="receipts-grid">
-          {filteredReceipts.map((receipt) => (
+          {receipts.map((receipt) => (
             <div key={receipt.kWarenannahme} className="receipt-card">
               <div className="receipt-header">
                 <div className="receipt-id">
-                  <Package size={20} />
-                  <span>WA-{receipt.kWarenannahme}</span>
+                  WA-{receipt.kWarenannahme}
                 </div>
-                <div 
-                  className="receipt-status"
-                  style={{ color: getStatusColor(receipt.cStatus) }}
-                >
-                  {getStatusIcon(receipt.cStatus)}
-                  <span>{receipt.cStatus}</span>
-                </div>
+                {getStatusBadge(receipt.cStatus)}
               </div>
 
-              <div className="receipt-body">
+              <div className="receipt-content">
                 <div className="receipt-info">
                   <div className="info-row">
-                    <Calendar size={16} />
-                    <span>{new Date(receipt.dDatum).toLocaleDateString('de-DE')}</span>
-                    <span className="time">{receipt.tUhrzeit}</span>
+                    <span className="label">Datum:</span>
+                    <span className="value">{formatDate(receipt.dDatum)}</span>
                   </div>
-                  
                   <div className="info-row">
-                    <Truck size={16} />
-                    <span>{receipt.cTransporteur}</span>
+                    <span className="label">Uhrzeit:</span>
+                    <span className="value">{formatTime(receipt.tUhrzeit)}</span>
                   </div>
-
-                  <div className="info-row highlight">
-                    <Package size={16} />
-                    <span>{receipt.nAnzahlPackstuecke}x {receipt.cPackstueckArt}</span>
+                  <div className="info-row">
+                    <span className="label">Transporteur:</span>
+                    <span className="value">{receipt.cTransporteur}</span>
                   </div>
-
-                  {receipt.cJTLLieferantenbestellnummer && (
+                  <div className="info-row">
+                    <span className="label">Packstücke:</span>
+                    <span className="value">
+                      {receipt.nAnzahlPackstuecke}x {receipt.cPackstueckArt}
+                    </span>
+                  </div>
+                  <div className="info-row">
+                    <span className="label">Zustand:</span>
+                    <span className="value">{receipt.cZustand}</span>
+                  </div>
+                  {receipt.cAnmerkung && (
                     <div className="info-row">
-                      <FileText size={16} />
-                      <span className="jtl-number">{receipt.cJTLLieferantenbestellnummer}</span>
+                      <span className="label">Anmerkung:</span>
+                      <span className="value">{receipt.cAnmerkung}</span>
                     </div>
                   )}
                 </div>
 
                 <div className="receipt-actions">
-                  <button
-                    className="action-btn details"
-                    onClick={() => loadReceiptDetails(receipt.kWarenannahme)}
-                    title="Details anzeigen"
-                  >
-                    <Eye size={18} />
-                    Details
-                  </button>
-                  
                   {receipt.cFotoPath && (
-                    <button
-                      className="action-btn photo"
+                    <button 
                       onClick={() => setPhotoModal(receipt.cFotoPath)}
+                      className="action-btn photo-btn"
                       title="Foto anzeigen"
                     >
-                      <Camera size={18} />
-                      Foto
+                      <Camera size={16} />
                     </button>
                   )}
+                  <button 
+                    onClick={() => setSelectedReceipt(receipt)}
+                    className="action-btn details-btn"
+                    title="Details anzeigen"
+                  >
+                    <Eye size={16} />
+                  </button>
                 </div>
               </div>
-
-              {receipt.cZustand === 'Beschädigt' && (
-                <div className="damage-indicator">
-                  ⚠️ Ware beschädigt
-                </div>
-              )}
             </div>
           ))}
         </div>
-      ) : (
-        <div className="no-results">
-          {searchTerm || statusFilter !== 'alle' ? (
-            <>
-              <p>Keine Warenannahmen gefunden</p>
-              <p className="no-results-hint">
-                Versuchen Sie es mit anderen Suchbegriffen oder Filtern
-              </p>
-            </>
-          ) : (
-            <>
-              <Package size={48} style={{ opacity: 0.3 }} />
-              <p>Noch keine Warenannahmen vorhanden</p>
-            </>
-          )}
-        </div>
       )}
 
-      {/* Details-Modal */}
-      {selectedReceipt && (
-        <ReceiptDetailsModal
-          receipt={selectedReceipt}
-          onClose={() => setSelectedReceipt(null)}
-          onPhotoClick={setPhotoModal}
-        />
-      )}
-
-      {/* Foto-Modal */}
+      {/* Foto Modal */}
       {photoModal && (
-        <PhotoModal
-          photoPath={photoModal}
-          onClose={() => setPhotoModal(null)}
-        />
-      )}
-    </div>
-  );
-};
-
-// Details-Modal Komponente
-const ReceiptDetailsModal = ({ receipt, onClose, onPhotoClick }) => {
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Eingegangen': return '#1976d2';
-      case 'In Einlagerung': return '#f57c00';
-      case 'Eingelagert': return '#388e3c';
-      default: return '#666';
-    }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content receipt-details-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Warenannahme Details</h3>
-          <button className="close-button" onClick={onClose}>
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className="modal-body">
-          <div className="detail-section">
-            <h4>📦 Warenannahme #{receipt.kWarenannahme}</h4>
-            <div 
-              className="status-badge-large"
-              style={{ backgroundColor: getStatusColor(receipt.cStatus) }}
+        <div className="photo-modal" onClick={() => setPhotoModal(null)}>
+          <div className="photo-modal-content">
+            <button 
+              className="photo-modal-close"
+              onClick={() => setPhotoModal(null)}
             >
-              {receipt.cStatus}
-            </div>
+              ×
+            </button>
+            <img 
+              src={`http://localhost:5000/${photoModal}`} 
+              alt="Warenannahme Foto"
+              className="photo-modal-image"
+            />
           </div>
+        </div>
+      )}
 
-          <div className="detail-section">
-            <h4>📅 Zeitpunkt</h4>
-            <p>
-              {new Date(receipt.dDatum).toLocaleDateString('de-DE', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })} um {receipt.tUhrzeit} Uhr
-            </p>
-          </div>
-
-          <div className="detail-section">
-            <h4>🚚 Transport</h4>
-            <p>Transporteur: <strong>{receipt.cTransporteur}</strong></p>
-            <p>Packstücke: <strong>{receipt.nAnzahlPackstuecke}x {receipt.cPackstueckArt}</strong></p>
-            <p>Zustand: <strong>{receipt.cZustand}</strong></p>
-            {receipt.bPalettentausch && <p>✅ Palettentausch erfolgt</p>}
-          </div>
-
-          {receipt.cJTLLieferantenbestellnummer && (
-            <div className="detail-section">
-              <h4>📋 Referenzen</h4>
-              <p>JTL-Nummer: <strong>{receipt.cJTLLieferantenbestellnummer}</strong></p>
-            </div>
-          )}
-
-          {receipt.cAnmerkung && (
-            <div className="detail-section">
-              <h4>💬 Anmerkungen</h4>
-              <p className="remarks">{receipt.cAnmerkung}</p>
-            </div>
-          )}
-
-          {receipt.cFotoPath && (
-            <div className="detail-section">
-              <h4>📷 Foto</h4>
+      {/* Details Modal */}
+      {selectedReceipt && (
+        <div className="details-modal" onClick={() => setSelectedReceipt(null)}>
+          <div className="details-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="details-header">
+              <h3>Warenannahme WA-{selectedReceipt.kWarenannahme}</h3>
               <button 
-                className="photo-button"
-                onClick={() => onPhotoClick(receipt.cFotoPath)}
+                className="close-btn"
+                onClick={() => setSelectedReceipt(null)}
               >
-                <Camera size={20} />
-                Foto anzeigen
+                ×
               </button>
             </div>
-          )}
-
-          <div className="detail-section">
-            <h4>👤 Erfasst von</h4>
-            <p>{receipt.MitarbeiterName}</p>
+            
+            <div className="details-body">
+              <div className="details-grid">
+                <div className="detail-item">
+                  <label>Datum & Zeit:</label>
+                  <span>{formatDate(selectedReceipt.dDatum)} um {formatTime(selectedReceipt.tUhrzeit)}</span>
+                </div>
+                <div className="detail-item">
+                  <label>Status:</label>
+                  {getStatusBadge(selectedReceipt.cStatus)}
+                </div>
+                <div className="detail-item">
+                  <label>Transporteur:</label>
+                  <span>{selectedReceipt.cTransporteur}</span>
+                </div>
+                <div className="detail-item">
+                  <label>Packstücke:</label>
+                  <span>{selectedReceipt.nAnzahlPackstuecke}x {selectedReceipt.cPackstueckArt}</span>
+                </div>
+                <div className="detail-item">
+                  <label>Zustand:</label>
+                  <span>{selectedReceipt.cZustand}</span>
+                </div>
+                <div className="detail-item">
+                  <label>Palettentausch:</label>
+                  <span>{selectedReceipt.bPalettentausch ? 'Ja' : 'Nein'}</span>
+                </div>
+                {selectedReceipt.cJTLLieferantenbestellnummer && (
+                  <div className="detail-item">
+                    <label>JTL Bestellnummer:</label>
+                    <span>{selectedReceipt.cJTLLieferantenbestellnummer}</span>
+                  </div>
+                )}
+                {selectedReceipt.cAnmerkung && (
+                  <div className="detail-item full-width">
+                    <label>Anmerkung:</label>
+                    <span>{selectedReceipt.cAnmerkung}</span>
+                  </div>
+                )}
+                {selectedReceipt.MitarbeiterName && (
+                  <div className="detail-item">
+                    <label>Erfasst von:</label>
+                    <span>{selectedReceipt.MitarbeiterName}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
-
-// Foto-Modal Komponente
-const PhotoModal = ({ photoPath, onClose }) => (
-  <div className="modal-overlay" onClick={onClose}>
-    <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
-      <button className="photo-close-button" onClick={onClose}>
-        <X size={24} />
-      </button>
-      <img 
-        src={`http://localhost:5000/${photoPath.replace(/\\/g, '/')}`} 
-        alt="Warenannahme Foto" 
-        className="modal-photo"
-      />
-    </div>
-  </div>
-);
 
 export default CustomerGoodsReceipts;

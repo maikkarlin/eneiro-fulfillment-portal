@@ -69,7 +69,7 @@ export const dashboardAPI = {
     api.get('/dashboard/available-months'),
 };
 
-// Warenannahme API - NEU
+// Warenannahme API - KORRIGIERT
 export const goodsReceiptAPI = {
   // Alle Warenannahmen abrufen
   getAll: (filters = {}) => {
@@ -81,17 +81,9 @@ export const goodsReceiptAPI = {
   getById: (id) => 
     api.get(`/goods-receipt/${id}`),
   
-  // Neue Warenannahme erstellen
-  create: (data) => {
-    const formData = new FormData();
-    
-    // Alle Felder hinzufügen
-    Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined) {
-        formData.append(key, data[key]);
-      }
-    });
-    
+  // Neue Warenannahme erstellen - KORRIGIERT
+  create: (formData) => {
+    // FormData wird direkt vom Frontend gesendet, NICHT neu erstellen!
     return api.post('/goods-receipt', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -128,7 +120,7 @@ export const goodsReceiptAPI = {
   getStats: () => 
     api.get('/goods-receipt/stats/dashboard'),
 
-    // NEUE FUNKTIONEN FÜR KUNDEN:
+  // NEUE FUNKTIONEN FÜR KUNDEN:
   
   // Alle Warenannahmen für angemeldeten Kunden abrufen
   getCustomerReceipts: () => 
@@ -137,14 +129,12 @@ export const goodsReceiptAPI = {
   // Einzelne Warenannahme für Kunden abrufen
   getCustomerReceiptById: (id) => 
     api.get(`/goods-receipt/customer/${id}`),
-
 };
 
-// Kunden API - NEU
+// Kunden API
 export const customersAPI = {
   getAll: () => 
     api.get('/customers'),
 };
-
 
 export default api;
