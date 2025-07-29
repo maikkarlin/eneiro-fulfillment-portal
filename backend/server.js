@@ -22,7 +22,24 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+// In backend/server.js - Ersetze diese Zeile:
+// app.use(cors());
+
+// Mit dieser erweiterten CORS-Konfiguration:
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Zusätzlich: Explizite OPTIONS-Handler für Preflight Requests
+app.options('*', cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Statische Dateien für Uploads (NEU)
@@ -34,6 +51,111 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/goods-receipt', goodsReceiptRoutes); // NEU
 app.use('/api/customers', require('./routes/customers')); // NEU
 app.use('/api/blocklager', require('./routes/blocklager'));
+
+console.log('🔧 Teste Route-Registrierung...');
+
+// Test ob die Datei geladen werden kann
+try {
+  const blocklagerRoute = require('./routes/blocklager');
+  console.log('✅ Blocklager-Route-Datei erfolgreich geladen');
+  console.log('✅ Route-Objekt:', typeof blocklagerRoute);
+} catch (error) {
+  console.error('❌ Fehler beim Laden der Blocklager-Route:', error);
+}
+
+// 3. Oder teste mit einer einfachen Test-Route:
+app.get('/api/blocklager/test', (req, res) => {
+  res.json({ message: 'Blocklager Route funktioniert!' });
+});
+console.log('🧪 Test-Route registriert: /api/blocklager/test');
+
+// 4. Debug: Zeige alle registrierten Routes
+app.get('/api/debug/routes', (req, res) => {
+  const routes = [];
+  
+  // Durchsuche alle Middleware
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      // Direkte Route
+      routes.push({
+        method: Object.keys(middleware.route.methods)[0].toUpperCase(),
+        path: middleware.route.path
+      });
+    } else if (middleware.name === 'router') {
+      // Router Middleware (unsere API Routes)
+      const routerName = middleware.regexp.toString();
+      
+      if (middleware.handle && middleware.handle.stack) {
+        middleware.handle.stack.forEach((handler) => {
+          if (handler.route) {
+            routes.push({
+              method: Object.keys(handler.route.methods)[0].toUpperCase(),
+              path: handler.route.path,
+              router: routerName
+            });
+          }
+        });
+      }
+    }
+  });
+  
+  res.json({ 
+    message: 'Alle registrierten Routes',
+    routes: routes,
+    totalRoutes: routes.length
+  });
+});
+console.log('🔍 Debug-Route verfügbar: /api/debug/routes');
+
+// Routes mit Logging
+console.log('🔧 Registriere Routes...');
+
+app.use('/api/auth', authRoutes);
+console.log('✅ Auth Route registriert');
+
+app.use('/api/dashboard', dashboardRoutes);
+console.log('✅ Dashboard Route registriert');
+
+app.use('/api/goods-receipt', goodsReceiptRoutes);
+console.log('✅ Goods Receipt Route registriert');
+
+app.use('/api/customers', require('./routes/customers'));
+console.log('✅ Customers Route registriert');
+
+try {
+  app.use('/api/blocklager', require('./routes/blocklager'));
+  console.log('✅ Blocklager Route erfolgreich registriert');
+} catch (error) {
+  console.error('❌ Fehler beim Registrieren der Blocklager Route:', error);
+}
+
+console.log('🚀 Alle Routes registriert');
+
+// Zusätzlich: Route testen
+app.get('/api/debug/routes', (req, res) => {
+  const routes = [];
+  app._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      routes.push({
+        method: Object.keys(middleware.route.methods)[0].toUpperCase(),
+        path: middleware.route.path
+      });
+    } else if (middleware.name === 'router') {
+      middleware.handle.stack.forEach(handler => {
+        if (handler.route) {
+          const path = middleware.regexp.toString().includes('^\\/?') 
+            ? middleware.regexp.toString().match(/\^\\?\?\(\.\*\)/)?.[0] || ''
+            : '';
+          routes.push({
+            method: Object.keys(handler.route.methods)[0].toUpperCase(),
+            path: path + handler.route.path
+          });
+        }
+      });
+    }
+  });
+  res.json({ registeredRoutes: routes });
+});
 
 // Test-Route
 app.get('/api/health', (req, res) => {
