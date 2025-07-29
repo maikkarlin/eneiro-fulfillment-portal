@@ -28,6 +28,7 @@ import GoodsReceiptForm from './GoodsReceiptForm';
 import GoodsReceiptDetailsModal from './GoodsReceiptDetailsModal';
 import GoodsReceiptLabel from './GoodsReceiptLabel'; // NEU: Import für Etikettendruck
 import CustomerGoodsReceipts from './CustomerGoodsReceipts'; // NEU: Import für Kunden-Warenannahmen
+import Blocklager from './Blocklager'; // NEU
 import ItemizedRecords from './ItemizedRecords'; // ORIGINAL KOMPONENTE
 import './Dashboard.css';
 
@@ -83,7 +84,7 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
-  // Navigation items basierend auf Benutzerrolle
+// Navigation items basierend auf Benutzerrolle
   const getNavigationItems = () => {
     if (user?.role === 'employee') {
       return [
@@ -103,18 +104,13 @@ const Dashboard = ({ user, onLogout }) => {
           icon: Plus 
         },
         { 
-          id: 'inventory', 
-          label: 'Lagerbestand', 
+          id: 'blocklager', 
+          label: 'Blocklager', 
           icon: Package 
-        },
-        { 
-          id: 'customers', 
-          label: 'Kunden', 
-          icon: Users 
         }
       ];
     } else {
-      // ERWEITERTE Kunde Navigation
+      // ERWEITERTE Kunde Navigation (unverändert)
       return [
         { 
           id: 'overview', 
@@ -122,9 +118,9 @@ const Dashboard = ({ user, onLogout }) => {
           icon: BarChart3 
         },
         { 
-          id: 'goods-receipts',  // NEU
-          label: 'Warenannahmen', // NEU
-          icon: Package // NEU
+          id: 'goods-receipts',  
+          label: 'Warenannahmen', 
+          icon: Package 
         },
         { 
           id: 'itemized', 
@@ -231,31 +227,29 @@ const Dashboard = ({ user, onLogout }) => {
       );
     }
 
-    // === MITARBEITER CONTENT ===
-    if (user?.role === 'employee') {
-      switch (activeSection) {
-        case 'overview':
-          return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
-        case 'goods-receipt':
-          return (
-            <GoodsReceiptList 
-              data={goodsReceiptData} 
-              onRefresh={loadDashboardData} 
-              onPhotoClick={setPhotoModal}
-              onDetailsClick={setSelectedGoodsReceipt}
-              onLabelPrint={setLabelPrintData}
-            />
-          );
-        case 'goods-receipt-add':
-          return <GoodsReceiptForm onSuccess={loadDashboardData} />;
-        case 'inventory':
-          return <InventoryView />;
-        case 'customers':
-          return <CustomersView />;
-        default:
-          return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
-      }
-    }
+// === MITARBEITER CONTENT ===
+if (user?.role === 'employee') {
+  switch (activeSection) {
+    case 'overview':
+      return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
+    case 'goods-receipt':
+      return (
+        <GoodsReceiptList 
+          data={goodsReceiptData} 
+          onRefresh={loadDashboardData} 
+          onPhotoClick={setPhotoModal}
+          onDetailsClick={setSelectedGoodsReceipt}
+          onLabelPrint={setLabelPrintData}
+        />
+      );
+    case 'goods-receipt-add':
+      return <GoodsReceiptForm onSuccess={loadDashboardData} />;
+    case 'blocklager':  // NEU
+      return <Blocklager />; // NEU
+    default:
+      return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
+  }
+}
 
     // === ERWEITERTE KUNDEN CONTENT ===
     switch (activeSection) {
@@ -782,19 +776,6 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
   );
 };
 
-// PLATZHALTER-KOMPONENTEN
-const InventoryView = () => (
-  <div>
-    <h2>Lagerbestand</h2>
-    <p>Hier wird der aktuelle Lagerbestand angezeigt...</p>
-  </div>
-);
 
-const CustomersView = () => (
-  <div>
-    <h2>Kunden Übersicht</h2>
-    <p>Hier werden alle Kunden und deren Status angezeigt...</p>
-  </div>
-);
 
 export default Dashboard;

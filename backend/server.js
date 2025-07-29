@@ -33,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/goods-receipt', goodsReceiptRoutes); // NEU
 app.use('/api/customers', require('./routes/customers')); // NEU
+app.use('/api/blocklager', require('./routes/blocklager'));
 
 // Test-Route
 app.get('/api/health', (req, res) => {
