@@ -1,53 +1,54 @@
-// backend/routes/goodsReceipt.js - FINALE VERSION MIT kLabel = 2 FILTER
-
+// backend/routes/goodsReceipt.js
 const express = require('express');
 const router = express.Router();
-const { getConnection, sql } = require('../config/database');
-const { authenticateToken } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const { getConnection, sql } = require('../config/database');
+const { authenticateToken } = require('../middleware/auth');
 
 // Multer Konfiguration für Foto-Upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads/warenannahme');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+    cb(null, 'uploads/goods-receipts/');
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `WA-${uniqueSuffix}${path.extname(file.originalname)}`);
+    cb(null, 'WA-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
 const upload = multer({ 
-  storage,
+  storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
-    const mimetype = allowedTypes.test(file.mimetype);
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
     
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Nur Bilder erlaubt (JPEG, PNG, GIF)'));
+      cb(new Error('Nur Bilddateien (jpeg, jpg, png, gif) sind erlaubt'));
     }
   }
 });
 
-// === TEST-ROUTE OHNE AUTHENTIFIZIERUNG ===
+// Test-Route (keine Auth erforderlich)
 router.get('/test', async (req, res) => {
   try {
-    console.log('🧪 Test-Route für Warenannahme aufgerufen');
+    console.log('🧪 Test-Route für Warenannahme (nur Fulfillment-Kunden mit kLabel = 2)...');
     
     const pool = await getConnection();
     const result = await pool.request().query(`
-      SELECT TOP 5 
-        w.*,
+      SELECT 
+        w.kWarenannahme,
+        w.dDatum,
+        CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+        w.kKunde,
+        w.cTransporteur,
+        w.cPackstueckArt,
+        w.nAnzahlPackstuecke,
+        w.cStatus,
         k.cKundenNr,
         a.cFirma AS KundenFirma
       FROM tWarenannahme w
@@ -101,7 +102,22 @@ router.get('/customer', authenticateToken, async (req, res) => {
       .input('kKunde', sql.Int, kKunde)
       .query(`
         SELECT 
-          w.*,
+          w.kWarenannahme,
+          w.dDatum,
+          CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+          w.kKunde,
+          w.cTransporteur,
+          w.cPackstueckArt,
+          w.nAnzahlPackstuecke,
+          w.cZustand,
+          w.bPalettentausch,
+          w.cJTLLieferantenbestellnummer,
+          w.cAnmerkung,
+          w.cFotoPath,
+          w.kBenutzer,
+          w.cStatus,
+          w.dErstellt,
+          w.dGeaendert,
           a.cFirma as KundenFirma,
           b.cName as MitarbeiterName
         FROM tWarenannahme w
@@ -157,7 +173,7 @@ router.get('/', authenticateToken, async (req, res) => {
       SELECT 
         w.kWarenannahme,
         w.dDatum,
-        w.tUhrzeit,
+        CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
         w.kKunde,
         k.cKundenNr,
         a.cFirma AS KundenFirma,
@@ -192,6 +208,58 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Einzelne Warenannahme abrufen (nur für Mitarbeiter, nur Fulfillment-Kunden)
+router.get('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const kWarenannahme = parseInt(id);
+    
+    console.log('📦 Lade Warenannahme ID:', kWarenannahme);
+
+    const pool = await getConnection();
+    const result = await pool.request()
+      .input('kWarenannahme', sql.Int, kWarenannahme)
+      .query(`
+        SELECT 
+          w.kWarenannahme,
+          w.dDatum,
+          CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+          w.kKunde,
+          w.cTransporteur,
+          w.cPackstueckArt,
+          w.nAnzahlPackstuecke,
+          w.cZustand,
+          w.bPalettentausch,
+          w.cJTLLieferantenbestellnummer,
+          w.cAnmerkung,
+          w.cFotoPath,
+          w.kBenutzer,
+          w.cStatus,
+          w.dErstellt,
+          w.dGeaendert,
+          k.cKundenNr,
+          a.cFirma AS KundenFirma,
+          b.cName AS MitarbeiterName
+        FROM tWarenannahme w
+        LEFT JOIN tKunde k ON w.kKunde = k.kKunde
+        LEFT JOIN tAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+        LEFT JOIN tBenutzer b ON w.kBenutzer = b.kBenutzer
+        LEFT JOIN tKundeLabel kl ON k.kKunde = kl.kKunde
+        WHERE w.kWarenannahme = @kWarenannahme AND kl.kLabel = 2
+      `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Warenannahme nicht gefunden oder kein Fulfillment-Kunde' });
+    }
+    
+    res.json(result.recordset[0]);
+    
+  } catch (error) {
+    console.error('❌ Fehler beim Laden der Warenannahme:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Warenannahme' });
+  }
+});
+
 // Einzelne Warenannahme für Kunden abrufen (nur Fulfillment-Kunden)
 router.get('/customer/:id', authenticateToken, async (req, res) => {
   try {
@@ -202,70 +270,29 @@ router.get('/customer/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const kWarenannahme = parseInt(id);
     
-    console.log('📦 Lade Warenannahme für Kunde. Raw ID:', id, 'Parsed ID:', kWarenannahme);
-    
-    if (isNaN(kWarenannahme)) {
-      console.error('❌ Ungültige Warenannahme-ID:', id);
-      return res.status(400).json({ error: 'Ungültige Warenannahme-ID' });
-    }
+    console.log('📦 Lade Warenannahme für Kunde:', req.user.customerNumber, 'ID:', kWarenannahme);
 
-    // Hole kKunde basierend auf der Kundennummer UND prüfe kLabel = 2
-    const pool = await getConnection();
-    const customerResult = await pool.request()
-      .input('customerNumber', sql.NVarChar, req.user.customerNumber)
-      .query(`
-        SELECT k.kKunde 
-        FROM tKunde k
-        LEFT JOIN tKundeLabel kl ON k.kKunde = kl.kKunde
-        WHERE k.cKundenNr = @customerNumber AND kl.kLabel = 2
-      `);
-
-    if (customerResult.recordset.length === 0) {
-      return res.status(404).json({ error: 'Fulfillment-Kunde nicht gefunden' });
-    }
-
-    const kKunde = customerResult.recordset[0].kKunde;
-
-    // Hole Warenannahme mit Prüfung, ob sie zu diesem Fulfillment-Kunden gehört
-    const result = await pool.request()
-      .input('kWarenannahme', sql.Int, kWarenannahme)
-      .input('kKunde', sql.Int, kKunde)
-      .query(`
-        SELECT 
-          w.*,
-          a.cFirma as KundenFirma,
-          b.cName as MitarbeiterName
-        FROM tWarenannahme w
-        LEFT JOIN tKunde k ON w.kKunde = k.kKunde
-        LEFT JOIN tAdresse a ON w.kKunde = a.kKunde AND a.nStandard = 1
-        LEFT JOIN tBenutzer b ON w.kBenutzer = b.kBenutzer
-        WHERE w.kWarenannahme = @kWarenannahme AND w.kKunde = @kKunde
-      `);
-
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ error: 'Warenannahme nicht gefunden oder keine Berechtigung' });
-    }
-
-    res.json(result.recordset[0]);
-    
-  } catch (error) {
-    console.error('❌ Fehler beim Abrufen der Warenannahme:', error);
-    res.status(500).json({ error: 'Serverfehler beim Abrufen der Warenannahme' });
-  }
-});
-
-// Einzelne Warenannahme abrufen (nur für Mitarbeiter, nur Fulfillment-Kunden)
-router.get('/:id', authenticateToken, async (req, res) => {
-  try {
-    const kWarenannahme = parseInt(req.params.id);
-    console.log('📦 Lade Warenannahme:', kWarenannahme);
-    
     const pool = await getConnection();
     const result = await pool.request()
       .input('kWarenannahme', sql.Int, kWarenannahme)
       .query(`
         SELECT 
-          w.*,
+          w.kWarenannahme,
+          w.dDatum,
+          CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+          w.kKunde,
+          w.cTransporteur,
+          w.cPackstueckArt,
+          w.nAnzahlPackstuecke,
+          w.cZustand,
+          w.bPalettentausch,
+          w.cJTLLieferantenbestellnummer,
+          w.cAnmerkung,
+          w.cFotoPath,
+          w.kBenutzer,
+          w.cStatus,
+          w.dErstellt,
+          w.dGeaendert,
           k.cKundenNr,
           a.cFirma AS KundenFirma,
           b.cName AS MitarbeiterName
@@ -402,7 +429,20 @@ router.post('/', authenticateToken, upload.single('photo'), async (req, res) => 
       .input('kWarenannahme', sql.Int, newId)
       .query(`
         SELECT 
-          w.*,
+          w.kWarenannahme,
+          w.dDatum,
+          CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+          w.kKunde,
+          w.cTransporteur,
+          w.cPackstueckArt,
+          w.nAnzahlPackstuecke,
+          w.cZustand,
+          w.bPalettentausch,
+          w.cJTLLieferantenbestellnummer,
+          w.cAnmerkung,
+          w.cFotoPath,
+          w.kBenutzer,
+          w.cStatus,
           a.cFirma as KundenFirma,
           b.cName as MitarbeiterName,
           k.cKundenNr
@@ -510,25 +550,20 @@ router.get('/stats/dashboard', authenticateToken, async (req, res) => {
       
       pool.request()
         .query(`
-          SELECT SUM(w.nAnzahlPackstuecke) as total 
+          SELECT ISNULL(SUM(w.nAnzahlPackstuecke), 0) as count 
           FROM tWarenannahme w
           LEFT JOIN tKunde k ON w.kKunde = k.kKunde
           LEFT JOIN tKundeLabel kl ON k.kKunde = kl.kKunde
-          WHERE MONTH(w.dDatum) = MONTH(GETDATE()) 
-          AND YEAR(w.dDatum) = YEAR(GETDATE()) 
-          AND kl.kLabel = 2
+          WHERE kl.kLabel = 2
         `)
     ]);
-    
-    const stats = {
-      HeutigeAnlieferungen: heutigeAnlieferungen.recordset[0].count,
-      OffeneEinlagerungen: offeneEinlagerungen.recordset[0].count,
-      InBearbeitung: inBearbeitung.recordset[0].count,
-      GesamtPackstuecke: gesamtPackstuecke.recordset[0].total || 0
-    };
-    
-    console.log('✅ Statistiken geladen:', stats);
-    res.json(stats);
+
+    res.json({
+      heutigeAnlieferungen: heutigeAnlieferungen.recordset[0].count,
+      offeneEinlagerungen: offeneEinlagerungen.recordset[0].count,
+      inBearbeitung: inBearbeitung.recordset[0].count,
+      gesamtPackstuecke: gesamtPackstuecke.recordset[0].count
+    });
     
   } catch (error) {
     console.error('❌ Fehler beim Laden der Statistiken:', error);
@@ -536,8 +571,40 @@ router.get('/stats/dashboard', authenticateToken, async (req, res) => {
   }
 });
 
-// === KUNDEN-SPEZIFISCHE ROUTES ===
+// Löschen (nur für Mitarbeiter)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const pool = await getConnection();
+    
+    // Prüfe ob Warenannahme existiert und zu Fulfillment-Kunde gehört
+    const checkResult = await pool.request()
+      .input('kWarenannahme', sql.Int, parseInt(id))
+      .query(`
+        SELECT w.kWarenannahme, w.cFotoPath 
+        FROM tWarenannahme w
+        LEFT JOIN tKunde k ON w.kKunde = k.kKunde
+        LEFT JOIN tKundeLabel kl ON k.kKunde = kl.kKunde
+        WHERE w.kWarenannahme = @kWarenannahme AND kl.kLabel = 2
+      `);
 
-
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Warenannahme nicht gefunden oder kein Fulfillment-Kunde' });
+    }
+    
+    // TODO: Foto löschen wenn vorhanden
+    // const fotoPath = checkResult.recordset[0].cFotoPath;
+    
+    await pool.request()
+      .input('kWarenannahme', sql.Int, parseInt(id))
+      .query('DELETE FROM tWarenannahme WHERE kWarenannahme = @kWarenannahme');
+    
+    res.json({ message: 'Warenannahme gelöscht' });
+  } catch (error) {
+    console.error('❌ Fehler beim Löschen:', error);
+    res.status(500).json({ error: 'Serverfehler beim Löschen' });
+  }
+});
 
 module.exports = router;
