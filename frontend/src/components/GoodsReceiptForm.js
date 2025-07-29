@@ -99,10 +99,10 @@ const GoodsReceiptForm = ({ onSuccess }) => {
       // Alle Felder anhängen
       Object.keys(formData).forEach(key => {
         if (key === 'photo' && formData[key]) {
-          submitData.append('foto', formData[key]);
+          submitData.append('photo', formData[key]); // WICHTIG: 'photo' statt 'foto'
         } else if (key === 'bPalettentausch') {
           submitData.append(key, formData[key] ? 'true' : 'false');
-        } else {
+        } else if (key !== 'photo') { // photo nicht doppelt anhängen
           submitData.append(key, formData[key] || '');
         }
       });
