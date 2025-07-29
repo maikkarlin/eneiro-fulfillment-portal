@@ -34,7 +34,7 @@ const Blocklager = () => {
       const token = localStorage.getItem('token');
       console.log('🔍 Starte Artikelsuche für:', searchTerm.trim());
       
-      const response = await fetch(`/api/blocklager/artikel/search?q=${encodeURIComponent(searchTerm.trim())}`, {
+      const response = await fetch(`http://localhost:5000/api/blocklager/artikel/search?q=${encodeURIComponent(searchTerm.trim())}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -111,7 +111,7 @@ const Blocklager = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/blocklager/artikel/update', {
+      const response = await fetch('http://localhost:5000/api/blocklager/artikel/update', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

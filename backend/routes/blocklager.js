@@ -83,58 +83,73 @@ router.post('/artikel/update', authenticateToken, async (req, res) => {
     console.log(`🔑 kArtikel: ${kArtikel}`);
 
     // Funktion zum Insert/Update der Attribute
-    async function upsertCustomField(kAttribut, wert) {
-      const checkResult = await pool.request()
-        .input('kArtikel', sql.Int, kArtikel)
-        .input('kAttribut', sql.Int, kAttribut)
-        .query(`
-          SELECT taa.kArtikelAttribut
-          FROM dbo.tArtikelAttribut taa
-          WHERE taa.kArtikel = @kArtikel AND taa.kAttribut = @kAttribut
-        `);
+async function upsertCustomField(kAttribut, wert) {
+  const checkResult = await pool.request()
+    .input('kArtikel', sql.Int, kArtikel)
+    .input('kAttribut', sql.Int, kAttribut)
+    .query(`
+      SELECT taa.kArtikelAttribut
+      FROM dbo.tArtikelAttribut taa
+      WHERE taa.kArtikel = @kArtikel AND taa.kAttribut = @kAttribut
+    `);
 
-      if (checkResult.recordset.length > 0) {
-        // Update bestehender Wert
-        const kAA = checkResult.recordset[0].kArtikelAttribut;
-        console.log(`Update Attribut ${kAttribut}: Wert = ${wert}`);
+  if (checkResult.recordset.length > 0) {
+    // Update bestehender Wert
+    const kAA = checkResult.recordset[0].kArtikelAttribut;
+    console.log(`Update Attribut ${kAttribut}: Wert = ${wert}`);
 
-        await pool.request()
-          .input('wert', sql.Int, parseInt(wert) || 0)
-          .input('kArtikelAttribut', sql.Int, kAA)
-          .query(`
-            UPDATE dbo.tArtikelAttributSprache
-            SET nWertInt = @wert
-            WHERE kArtikelAttribut = @kArtikelAttribut AND kSprache = 0
-          `);
-        
-        console.log(`✅ Attribut ${kAttribut} aktualisiert`);
-      } else {
-        // Neuen Wert einfügen
-        console.log(`Insert Attribut ${kAttribut}: Wert = ${wert}`);
-        
-        const insertResult = await pool.request()
-          .input('kArtikel', sql.Int, kArtikel)
-          .input('kAttribut', sql.Int, kAttribut)
-          .query(`
-            INSERT INTO dbo.tArtikelAttribut (kArtikel, kAttribut, kShop)
-            OUTPUT inserted.kArtikelAttribut
-            VALUES (@kArtikel, @kAttribut, 0)
-          `);
-        
-        const newKAA = insertResult.recordset[0].kArtikelAttribut;
-        console.log(`🆕 Neuer kArtikelAttribut = ${newKAA}`);
-
-        await pool.request()
-          .input('kArtikelAttribut', sql.Int, newKAA)
-          .input('wert', sql.Int, parseInt(wert) || 0)
-          .query(`
-            INSERT INTO dbo.tArtikelAttributSprache (kArtikelAttribut, kSprache, nWertInt)
-            VALUES (@kArtikelAttribut, 0, @wert)
-          `);
-        
-        console.log(`✅ Attribut ${kAttribut} eingefügt`);
-      }
+    await pool.request()
+      .input('wert', sql.Int, parseInt(wert) || 0)
+      .input('kArtikelAttribut', sql.Int, kAA)
+      .query(`
+        UPDATE dbo.tArtikelAttributSprache
+        SET nWertInt = @wert
+        WHERE kArtikelAttribut = @kArtikelAttribut AND kSprache = 0
+      `);
+    
+    console.log(`✅ Attribut ${kAttribut} aktualisiert`);
+  } else {
+    // Neuen Wert einfügen - OHNE OUTPUT wegen Trigger
+    console.log(`Insert Attribut ${kAttribut}: Wert = ${wert}`);
+    
+    // Schritt 1: INSERT ohne OUTPUT
+    await pool.request()
+      .input('kArtikel', sql.Int, kArtikel)
+      .input('kAttribut', sql.Int, kAttribut)
+      .query(`
+        INSERT INTO dbo.tArtikelAttribut (kArtikel, kAttribut, kShop)
+        VALUES (@kArtikel, @kAttribut, 0)
+      `);
+    
+    // Schritt 2: Die neue kArtikelAttribut ermitteln
+    const newIdResult = await pool.request()
+      .input('kArtikel', sql.Int, kArtikel)
+      .input('kAttribut', sql.Int, kAttribut)
+      .query(`
+        SELECT kArtikelAttribut 
+        FROM dbo.tArtikelAttribut 
+        WHERE kArtikel = @kArtikel AND kAttribut = @kAttribut
+      `);
+    
+    if (newIdResult.recordset.length === 0) {
+      throw new Error(`❌ Konnte kArtikelAttribut nicht finden nach Insert für Attribut ${kAttribut}`);
     }
+    
+    const newKAA = newIdResult.recordset[0].kArtikelAttribut;
+    console.log(`🆕 Neuer kArtikelAttribut = ${newKAA}`);
+
+    // Schritt 3: Sprachwert einfügen
+    await pool.request()
+      .input('kArtikelAttribut', sql.Int, newKAA)
+      .input('wert', sql.Int, parseInt(wert) || 0)
+      .query(`
+        INSERT INTO dbo.tArtikelAttributSprache (kArtikelAttribut, kSprache, nWertInt)
+        VALUES (@kArtikelAttribut, 0, @wert)
+      `);
+    
+    console.log(`✅ Attribut ${kAttribut} eingefügt`);
+  }
+}
 
     // Alle drei Attribute verarbeiten
     await upsertCustomField(1513, anzahlPalette);
