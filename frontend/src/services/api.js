@@ -1,6 +1,13 @@
+// frontend/src/services/api.js - KORRIGIERTE VERSION
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// API Base URL - WICHTIG: Muss auf Ihren Server zeigen!
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://portal.infra-gw.io/api'  // Production URL über Ihren Reverse Proxy
+    : 'http://localhost:5000/api'); // Development URL
+
+console.log('🌐 API Base URL:', API_BASE_URL);
 
 // Axios Instanz erstellen
 const api = axios.create({
@@ -18,17 +25,24 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('📤 API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
   (error) => {
+    console.error('📤 Request Error:', error);
     return Promise.reject(error);
   }
 );
 
 // Response Interceptor für Error Handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('📥 API Response:', response.status, response.config.url);
+    return response;
+  },
   (error) => {
+    console.error('📥 API Error:', error.message, error.config?.url);
+    
     if (error.response?.status === 401) {
       // Token abgelaufen
       localStorage.removeItem('token');
@@ -69,21 +83,17 @@ export const dashboardAPI = {
     api.get('/dashboard/available-months'),
 };
 
-// Warenannahme API - KORRIGIERT
+// Warenannahme API
 export const goodsReceiptAPI = {
-  // Alle Warenannahmen abrufen
   getAll: (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
     return api.get(`/goods-receipt?${params}`);
   },
   
-  // Einzelne Warenannahme abrufen
   getById: (id) => 
     api.get(`/goods-receipt/${id}`),
   
-  // Neue Warenannahme erstellen - KORRIGIERT
   create: (formData) => {
-    // FormData wird direkt vom Frontend gesendet, NICHT neu erstellen!
     return api.post('/goods-receipt', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -91,20 +101,7 @@ export const goodsReceiptAPI = {
     });
   },
   
-  // Status aktualisieren
-  updateStatus: (id, status) => 
-    api.patch(`/goods-receipt/${id}/status`, { cStatus: status }),
-  
-  // Komplett aktualisieren
-  update: (id, data) => {
-    const formData = new FormData();
-    
-    Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined) {
-        formData.append(key, data[key]);
-      }
-    });
-    
+  update: (id, formData) => {
     return api.put(`/goods-receipt/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -112,29 +109,26 @@ export const goodsReceiptAPI = {
     });
   },
   
-  // Löschen
   delete: (id) => 
     api.delete(`/goods-receipt/${id}`),
-  
-  // Dashboard-Statistiken
-  getStats: () => 
-    api.get('/goods-receipt/stats/dashboard'),
-
-  // NEUE FUNKTIONEN FÜR KUNDEN:
-  
-  // Alle Warenannahmen für angemeldeten Kunden abrufen
-  getCustomerReceipts: () => 
-    api.get('/goods-receipt/customer'),
-  
-  // Einzelne Warenannahme für Kunden abrufen
-  getCustomerReceiptById: (id) => 
-    api.get(`/goods-receipt/customer/${id}`),
 };
 
-// Kunden API
+// Customers API
 export const customersAPI = {
   getAll: () => 
     api.get('/customers'),
+};
+
+// Blocklager API
+export const blocklagerAPI = {
+  searchArticle: (query) => 
+    api.get(`/blocklager/artikel/search?q=${encodeURIComponent(query)}`),
+  
+  saveFields: (articleNumber, fields) =>
+    api.post(`/blocklager/artikel/${articleNumber}/fields`, fields),
+  
+  getStockMovements: (articleNumber) =>
+    api.get(`/blocklager/artikel/${articleNumber}/movements`),
 };
 
 export default api;

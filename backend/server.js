@@ -1,7 +1,8 @@
+// backend/server.js - CORS Konfiguration KORRIGIERT
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const fs = require('fs'); // NEU für Upload-Ordner
+const fs = require('fs');
 
 // Lade Umgebungsvariablen
 const result = dotenv.config();
@@ -11,158 +12,80 @@ if (result.error) {
   console.log('✅ .env Datei erfolgreich geladen');
 }
 
-// Jetzt erst andere Module laden
+// Module laden
 const { testConnection } = require('./config/database');
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
-const goodsReceiptRoutes = require('./routes/goodsReceipt'); // NEU
+const goodsReceiptRoutes = require('./routes/goodsReceipt');
 
 // Express App erstellen
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-// In backend/server.js - Ersetze diese Zeile:
-// app.use(cors());
-
-// Mit dieser erweiterten CORS-Konfiguration:
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+// CORS Konfiguration - ERWEITERT für Production
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Erlaubte Origins
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001', 
+      'https://ffn.eneiro.io',
+      'http://ffn.eneiro.io',
+      // Falls Sie eine andere Domain verwenden:
+      // 'https://ihre-domain.com'
+    ];
+    
+    // In Development: Auch undefined erlauben (für Postman, etc.)
+    if (process.env.NODE_ENV !== 'production' && !origin) {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
 
-// Zusätzlich: Explizite OPTIONS-Handler für Preflight Requests
-app.options('*', cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors(corsOptions));
+
+// Explizite OPTIONS-Handler
+app.options('*', cors(corsOptions));
+
+// Body Parser
 app.use(express.json());
 
-// Statische Dateien für Uploads (NEU)
+// Statische Dateien für Uploads
 app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/goods-receipt', goodsReceiptRoutes); // NEU
-app.use('/api/customers', require('./routes/customers')); // NEU
+app.use('/api/goods-receipt', goodsReceiptRoutes);
+app.use('/api/customers', require('./routes/customers'));
 app.use('/api/blocklager', require('./routes/blocklager'));
 
-console.log('🔧 Teste Route-Registrierung...');
-
-// Test ob die Datei geladen werden kann
-try {
-  const blocklagerRoute = require('./routes/blocklager');
-  console.log('✅ Blocklager-Route-Datei erfolgreich geladen');
-  console.log('✅ Route-Objekt:', typeof blocklagerRoute);
-} catch (error) {
-  console.error('❌ Fehler beim Laden der Blocklager-Route:', error);
-}
-
-// 3. Oder teste mit einer einfachen Test-Route:
-app.get('/api/blocklager/test', (req, res) => {
-  res.json({ message: 'Blocklager Route funktioniert!' });
-});
-console.log('🧪 Test-Route registriert: /api/blocklager/test');
-
-// 4. Debug: Zeige alle registrierten Routes
-app.get('/api/debug/routes', (req, res) => {
-  const routes = [];
-  
-  // Durchsuche alle Middleware
-  app._router.stack.forEach((middleware) => {
-    if (middleware.route) {
-      // Direkte Route
-      routes.push({
-        method: Object.keys(middleware.route.methods)[0].toUpperCase(),
-        path: middleware.route.path
-      });
-    } else if (middleware.name === 'router') {
-      // Router Middleware (unsere API Routes)
-      const routerName = middleware.regexp.toString();
-      
-      if (middleware.handle && middleware.handle.stack) {
-        middleware.handle.stack.forEach((handler) => {
-          if (handler.route) {
-            routes.push({
-              method: Object.keys(handler.route.methods)[0].toUpperCase(),
-              path: handler.route.path,
-              router: routerName
-            });
-          }
-        });
-      }
-    }
-  });
-  
+// Debug Route für CORS
+app.get('/api/cors-test', (req, res) => {
   res.json({ 
-    message: 'Alle registrierten Routes',
-    routes: routes,
-    totalRoutes: routes.length
+    message: 'CORS funktioniert!',
+    origin: req.get('Origin'),
+    timestamp: new Date()
   });
 });
-console.log('🔍 Debug-Route verfügbar: /api/debug/routes');
 
-// Routes mit Logging
-console.log('🔧 Registriere Routes...');
-
-app.use('/api/auth', authRoutes);
-console.log('✅ Auth Route registriert');
-
-app.use('/api/dashboard', dashboardRoutes);
-console.log('✅ Dashboard Route registriert');
-
-app.use('/api/goods-receipt', goodsReceiptRoutes);
-console.log('✅ Goods Receipt Route registriert');
-
-app.use('/api/customers', require('./routes/customers'));
-console.log('✅ Customers Route registriert');
-
-try {
-  app.use('/api/blocklager', require('./routes/blocklager'));
-  console.log('✅ Blocklager Route erfolgreich registriert');
-} catch (error) {
-  console.error('❌ Fehler beim Registrieren der Blocklager Route:', error);
-}
-
-console.log('🚀 Alle Routes registriert');
-
-// Zusätzlich: Route testen
-app.get('/api/debug/routes', (req, res) => {
-  const routes = [];
-  app._router.stack.forEach(middleware => {
-    if (middleware.route) {
-      routes.push({
-        method: Object.keys(middleware.route.methods)[0].toUpperCase(),
-        path: middleware.route.path
-      });
-    } else if (middleware.name === 'router') {
-      middleware.handle.stack.forEach(handler => {
-        if (handler.route) {
-          const path = middleware.regexp.toString().includes('^\\/?') 
-            ? middleware.regexp.toString().match(/\^\\?\?\(\.\*\)/)?.[0] || ''
-            : '';
-          routes.push({
-            method: Object.keys(handler.route.methods)[0].toUpperCase(),
-            path: path + handler.route.path
-          });
-        }
-      });
-    }
-  });
-  res.json({ registeredRoutes: routes });
-});
-
-// Test-Route
+// Health Check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     message: 'Server läuft!',
-    timestamp: new Date()
+    timestamp: new Date(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -180,7 +103,7 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// Error Handler (NEU)
+// Error Handler
 app.use((err, req, res, next) => {
   console.error('❌ Server Error:', err);
   res.status(500).json({ 
@@ -189,38 +112,35 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 Handler (NEU)
+// 404 Handler
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route nicht gefunden' });
 });
 
-// Upload-Ordner erstellen falls nicht vorhanden (NEU)
+// Upload-Ordner erstellen
 function createUploadDirectories() {
   const uploadDir = 'uploads/warenannahme';
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
     console.log('📁 Upload-Ordner erstellt:', uploadDir);
-  } else {
-    console.log('📁 Upload-Ordner bereits vorhanden:', uploadDir);
   }
 }
 
 // Server starten
 async function startServer() {
   try {
-    // Upload-Ordner erstellen
     createUploadDirectories();
     
-    // Datenbankverbindung testen
     const dbConnected = await testConnection();
     if (!dbConnected) {
       console.log('⚠️  Datenbankverbindung fehlgeschlagen, aber Server wird trotzdem gestartet');
     }
     
-    app.listen(PORT, () => {
-      console.log(`✅ Server läuft auf http://localhost:${PORT}`);
-      console.log(`📋 Teste die API unter: http://localhost:${PORT}/api/health`);
-      console.log(`📦 Warenannahme API verfügbar unter: http://localhost:${PORT}/api/goods-receipt`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Server läuft auf http://0.0.0.0:${PORT}`);
+      console.log(`📋 Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`🧪 CORS Test: http://localhost:${PORT}/api/cors-test`);
+      console.log(`🌐 Umgebung: ${process.env.NODE_ENV || 'development'}`);
     });
     
   } catch (error) {
