@@ -607,4 +607,55 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/goods-receipt/stats - Warenannahme Statistiken
+router.get('/stats', authenticateToken, async (req, res) => {
+  try {
+    console.log('📊 Lade Warenannahme-Statistiken...');
+    
+    const connection = await getConnection();
+    
+    // Einfache Statistiken für Mitarbeiter-Dashboard
+    const [results] = await connection.execute(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'Eingegangen' THEN 1 END) as eingegangen,
+        COUNT(CASE WHEN status = 'Bearbeitet' THEN 1 END) as bearbeitet,
+        COUNT(CASE WHEN status = 'Abgeschlossen' THEN 1 END) as abgeschlossen,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() THEN 1 END) as heute,
+        COUNT(CASE WHEN DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) THEN 1 END) as diese_woche,
+        COUNT(CASE WHEN DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 END) as dieser_monat
+      FROM warenannahme
+      WHERE 1=1
+    `);
+    
+    const stats = results[0] || {
+      total: 0,
+      eingegangen: 0, 
+      bearbeitet: 0,
+      abgeschlossen: 0,
+      heute: 0,
+      diese_woche: 0,
+      dieser_monat: 0
+    };
+    
+    console.log('✅ Statistiken geladen:', stats);
+    res.json(stats);
+    
+  } catch (error) {
+    console.error('❌ Fehler beim Laden der Warenannahme-Statistiken:', error);
+    
+    // Fallback-Statistiken wenn Tabelle nicht existiert
+    res.json({
+      total: 0,
+      eingegangen: 0,
+      bearbeitet: 0, 
+      abgeschlossen: 0,
+      heute: 0,
+      diese_woche: 0,
+      dieser_monat: 0
+    });
+  }
+});
+
+
 module.exports = router;

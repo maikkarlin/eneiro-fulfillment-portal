@@ -29,8 +29,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001', 
-      'https://ffn.eneiro.io',
-      'http://ffn.eneiro.io',
+      'https://portal.infra-gw.io',
+      'http://portal.infra-gw.io',
       // Falls Sie eine andere Domain verwenden:
       // 'https://ihre-domain.com'
     ];

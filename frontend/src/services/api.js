@@ -111,6 +111,10 @@ export const goodsReceiptAPI = {
   
   delete: (id) => 
     api.delete(`/goods-receipt/${id}`),
+
+  getStats: () => 
+    api.get('/goods-receipt/stats/dashboard'),
+
 };
 
 // Customers API
