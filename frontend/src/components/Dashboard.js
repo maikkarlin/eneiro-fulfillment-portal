@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.js - MIT ETIKETTENDRUCK UND SUCHE/FILTER UND KUNDEN-WARENANNAHMEN
+// frontend/src/components/Dashboard.js - NUR FOTO-ANZEIGE REPARIERT
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
@@ -10,7 +10,6 @@ import {
   Clock,
   DollarSign,
   Truck,
-  // NEU für Mitarbeiter:
   ClipboardList,
   Plus,
   Eye,
@@ -21,26 +20,27 @@ import {
   Image,
   X,
   Search,
-  Filter
+  Filter,
+  Printer
 } from 'lucide-react';
 import { dashboardAPI, goodsReceiptAPI } from '../services/api';
 import GoodsReceiptForm from './GoodsReceiptForm';
 import GoodsReceiptDetailsModal from './GoodsReceiptDetailsModal';
-import GoodsReceiptLabel from './GoodsReceiptLabel'; // NEU: Import für Etikettendruck
-import CustomerGoodsReceipts from './CustomerGoodsReceipts'; // NEU: Import für Kunden-Warenannahmen
-import Blocklager from './Blocklager'; // NEU
-import ItemizedRecords from './ItemizedRecords'; // ORIGINAL KOMPONENTE
+import GoodsReceiptLabel from './GoodsReceiptLabel';
+import CustomerGoodsReceipts from './CustomerGoodsReceipts';
+import Blocklager from './Blocklager';
+import ItemizedRecords from './ItemizedRecords';
 import './Dashboard.css';
 
 const Dashboard = ({ user, onLogout }) => {
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [data, setData] = useState({});
-  const [goodsReceiptData, setGoodsReceiptData] = useState({});
+  const [goodsReceiptData, setGoodsReceiptData] = useState({ list: [], stats: {} });
   const [loading, setLoading] = useState(true);
   const [photoModal, setPhotoModal] = useState(null);
-  const [selectedGoodsReceipt, setSelectedGoodsReceipt] = useState(null); // NEU: für Details-Modal
-  const [labelPrintData, setLabelPrintData] = useState(null); // NEU: für Etikettendruck
+  const [selectedGoodsReceipt, setSelectedGoodsReceipt] = useState(null);
+  const [labelPrintData, setLabelPrintData] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -53,7 +53,6 @@ const Dashboard = ({ user, onLogout }) => {
       setError('');
       
       if (user?.role === 'customer') {
-        // ORIGINAL Kunden-Dashboard
         const [kpis, orders] = await Promise.all([
           dashboardAPI.getKPIs(),
           dashboardAPI.getOrdersHistory()
@@ -64,146 +63,61 @@ const Dashboard = ({ user, onLogout }) => {
           orders: orders.data
         });
       } else if (user?.role === 'employee') {
-        // Mitarbeiter-Dashboard
-        const [goodsReceipts, goodsReceiptStats] = await Promise.all([
-          goodsReceiptAPI.getAll(),
-          goodsReceiptAPI.getStats()
-        ]);
+        console.log('🔄 Lade Mitarbeiter-Dashboard Daten...');
         
-        setGoodsReceiptData({
-          list: goodsReceipts.data,
-          stats: goodsReceiptStats.data
-        });
+        try {
+          const [goodsReceipts, goodsReceiptStats] = await Promise.all([
+            goodsReceiptAPI.getAll(),
+            goodsReceiptAPI.getStats()
+          ]);
+          
+          console.log('📦 Goods Receipts Response:', goodsReceipts.data);
+          console.log('📊 Stats Response:', goodsReceiptStats.data);
+          
+          const list = goodsReceipts.data?.data || goodsReceipts.data || [];
+          const stats = goodsReceiptStats.data || {};
+          
+          console.log('✅ Extrahierte Liste:', list.length, 'Einträge');
+          console.log('✅ Extrahierte Stats:', stats);
+          
+          setGoodsReceiptData({
+            list: Array.isArray(list) ? list : [],
+            stats: stats
+          });
+          
+        } catch (apiError) {
+          console.error('❌ API Fehler:', apiError);
+          setGoodsReceiptData({
+            list: [],
+            stats: {}
+          });
+          setError('Fehler beim Laden der Warenannahme-Daten: ' + apiError.message);
+        }
       }
       
     } catch (error) {
-      console.error('Fehler beim Laden der Dashboard-Daten:', error);
+      console.error('❌ Allgemeiner Fehler beim Laden der Dashboard-Daten:', error);
       setError('Fehler beim Laden der Daten: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
-// Navigation items basierend auf Benutzerrolle
   const getNavigationItems = () => {
     if (user?.role === 'employee') {
       return [
-        { 
-          id: 'overview', 
-          label: 'Übersicht', 
-          icon: BarChart3 
-        },
-        { 
-          id: 'goods-receipt', 
-          label: 'Warenannahmen', 
-          icon: ClipboardList 
-        },
-        { 
-          id: 'goods-receipt-add', 
-          label: 'Erfassen', 
-          icon: Plus 
-        },
-        { 
-          id: 'blocklager', 
-          label: 'Blocklager', 
-          icon: Package 
-        }
+        { id: 'overview', label: 'Übersicht', icon: BarChart3 },
+        { id: 'goods-receipt', label: 'Warenannahmen', icon: ClipboardList },
+        { id: 'goods-receipt-add', label: 'Erfassen', icon: Plus },
+        { id: 'blocklager', label: 'Blocklager', icon: Package }
       ];
     } else {
-      // ERWEITERTE Kunde Navigation (unverändert)
       return [
-        { 
-          id: 'overview', 
-          label: 'Übersicht', 
-          icon: BarChart3 
-        },
-        { 
-          id: 'goods-receipts',  
-          label: 'Warenannahmen', 
-          icon: Package 
-        },
-        { 
-          id: 'itemized', 
-          label: 'Einzelverbindungsnachweis', 
-          icon: FileText 
-        },
-        { 
-          id: 'orders', 
-          label: 'Bestellungen', 
-          icon: Package 
-        },
-        { 
-          id: 'reports', 
-          label: 'Berichte', 
-          icon: TrendingUp 
-        }
+        { id: 'overview', label: 'Übersicht', icon: BarChart3 },
+        { id: 'goods-receipts', label: 'Warenannahmen', icon: Package },
+        { id: 'itemized', label: 'Einzelverbindungsnachweis', icon: FileText }
       ];
     }
-  };
-
-  // ORIGINAL KPI Cards Funktion
-  const getKPICards = () => {
-    if (!data.kpis) return [];
-    
-    const kpis = data.kpis;
-    
-    return [
-      {
-        label: 'Bestellungen diesen Monat',
-        value: kpis.totalOrders || 0,
-        icon: Package,
-        trend: kpis.ordersTrend,
-        color: '#2563eb',
-        bgColor: '#dbeafe'
-      },
-      {
-        label: 'Bestellungen heute',
-        value: kpis.ordersToday || 0,
-        icon: Clock,
-        color: '#7c3aed',
-        bgColor: '#ede9fe'
-      },
-      {
-        label: 'Offene Sendungen',
-        value: kpis.pendingShipments || 0,
-        icon: Truck,
-        color: '#dc2626',
-        bgColor: '#fecaca'
-      },
-      {
-        label: 'Umsatz diesen Monat',
-        value: `€${(kpis.revenue || 0).toFixed(2)}`,
-        icon: DollarSign,
-        color: '#059669',
-        bgColor: '#d1fae5'
-      },
-      {
-        label: 'Versendete Pakete',
-        value: kpis.packagesShipped || 0,
-        icon: Package,
-        color: '#0891b2',
-        bgColor: '#cffafe'
-      },
-      {
-        label: 'Retourenquote',
-        value: `${kpis.returnRate || 0}%`,
-        icon: TrendingUp,
-        color: '#c2410c',
-        bgColor: '#ffedd5'
-      }
-    ];
-  };
-
-  const getTrendClass = (trend) => {
-    if (trend > 0) return 'positive';
-    if (trend < 0) return 'negative';
-    return 'neutral';
-  };
-
-  const getTrendIcon = (trend) => {
-    if (trend > 0) return '↗';
-    if (trend < 0) return '↘';
-    return '→';
   };
 
   const renderContent = () => {
@@ -227,42 +141,36 @@ const Dashboard = ({ user, onLogout }) => {
       );
     }
 
-// === MITARBEITER CONTENT ===
-if (user?.role === 'employee') {
-  switch (activeSection) {
-    case 'overview':
-      return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
-    case 'goods-receipt':
-      return (
-        <GoodsReceiptList 
-          data={goodsReceiptData} 
-          onRefresh={loadDashboardData} 
-          onPhotoClick={setPhotoModal}
-          onDetailsClick={setSelectedGoodsReceipt}
-          onLabelPrint={setLabelPrintData}
-        />
-      );
-    case 'goods-receipt-add':
-      return <GoodsReceiptForm onSuccess={loadDashboardData} />;
-    case 'blocklager':  // NEU
-      return <Blocklager />; // NEU
-    default:
-      return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
-  }
-}
+    if (user?.role === 'employee') {
+      switch (activeSection) {
+        case 'overview':
+          return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
+        case 'goods-receipt':
+          return (
+            <GoodsReceiptList 
+              data={goodsReceiptData} 
+              onRefresh={loadDashboardData} 
+              onPhotoClick={setPhotoModal}
+              onDetailsClick={setSelectedGoodsReceipt}
+              onLabelPrint={setLabelPrintData}
+            />
+          );
+        case 'goods-receipt-add':
+          return <GoodsReceiptForm onSuccess={loadDashboardData} />;
+        case 'blocklager':
+          return <Blocklager />;
+        default:
+          return <EmployeeOverview data={goodsReceiptData} onRefresh={loadDashboardData} />;
+      }
+    }
 
-    // === ERWEITERTE KUNDEN CONTENT ===
     switch (activeSection) {
       case 'overview':
         return <CustomerOverview data={data} onRefresh={loadDashboardData} />;
-      case 'goods-receipts':  // NEU
-        return <CustomerGoodsReceipts />; // NEU
+      case 'goods-receipts':
+        return <CustomerGoodsReceipts />;
       case 'itemized':
-        return <ItemizedRecords />; // ORIGINAL KOMPONENTE
-      case 'orders':
-        return <OrdersView data={data} />;
-      case 'reports':
-        return <ReportsView />;
+        return <ItemizedRecords />;
       default:
         return <CustomerOverview data={data} onRefresh={loadDashboardData} />;
     }
@@ -324,7 +232,7 @@ if (user?.role === 'employee') {
                 onClick={() => setActiveSection(item.id)}
               >
                 <item.icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
+                <span>{item.label}</span>
               </button>
             ))}
           </nav>
@@ -332,36 +240,35 @@ if (user?.role === 'employee') {
 
         {/* Main Content */}
         <main className="dashboard-main">
-          <div className="dashboard-content">
-            {renderContent()}
-          </div>
+          {renderContent()}
         </main>
       </div>
 
-      {/* Foto-Modal */}
+      {/* Modals */}
       {photoModal && (
         <PhotoModal 
           photoPath={photoModal} 
           onClose={() => setPhotoModal(null)} 
         />
       )}
-
-      {/* Details-Modal NEU */}
-      {selectedGoodsReceipt && (
-        <GoodsReceiptDetailsModal
-          goodsReceiptId={selectedGoodsReceipt}
-          onClose={() => setSelectedGoodsReceipt(null)}
-          onUpdate={loadDashboardData}
-          onPhotoClick={setPhotoModal}
-        />
-      )}
-
-      {/* Etiketten-Modal NEU */}
+      
+{selectedGoodsReceipt && (
+  <GoodsReceiptDetailsModal
+    goodsReceiptId={selectedGoodsReceipt.kWarenannahme}  // ✅ Nur die ID
+    onClose={() => setSelectedGoodsReceipt(null)}
+    onUpdate={() => {                                     // ✅ onUpdate statt onSave
+      setSelectedGoodsReceipt(null);
+      loadDashboardData();
+    }}
+    onPhotoClick={setPhotoModal}                         // ✅ Foto-Handler hinzufügen
+  />
+)}
+      
       {labelPrintData && (
         <GoodsReceiptLabel
           goodsReceipt={labelPrintData}
           onPrint={() => {
-            alert('Etikett wurde zum Drucker gesendet!');
+            console.log('Etikett gedruckt für:', labelPrintData);
             setLabelPrintData(null);
           }}
           onClose={() => setLabelPrintData(null)}
@@ -371,139 +278,72 @@ if (user?.role === 'employee') {
   );
 };
 
-// === FOTO-MODAL KOMPONENTE ===
-const PhotoModal = ({ photoPath, onClose }) => (
-  <div className="photo-modal-overlay" onClick={onClose}>
-    <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
-      <button className="photo-modal-close" onClick={onClose}>
-        <X size={24} />
-      </button>
-      <img 
-        src={`http://localhost:5000/${photoPath.replace(/\\/g, '/')}`} 
-        alt="Warenannahme Foto" 
-        className="photo-modal-image"
-      />
-    </div>
-  </div>
-);
-
-// === ORIGINAL KUNDEN KOMPONENTEN ===
-const CustomerOverview = ({ data, onRefresh }) => {
-  if (!data.kpis) {
+// ===== REPARIERTE FOTO-MODAL KOMPONENTE =====
+const PhotoModal = ({ photoPath, onClose }) => {
+  console.log('🖼️ PhotoModal - Foto-Pfad:', photoPath);
+  
+  // Korrekte URL konstruieren
+  const getPhotoUrl = (path) => {
+    if (!path) return null;
+    
+    // Backslashes durch Slashes ersetzen
+    const cleanPath = path.replace(/\\/g, '/');
+    
+    // Wenn bereits mit "uploads/" beginnt, direkt verwenden
+    if (cleanPath.startsWith('uploads/')) {
+      return `http://localhost:5000/${cleanPath}`;
+    }
+    
+    // Ansonsten "uploads/warenannahme/" voranstellen
+    return `http://localhost:5000/uploads/warenannahme/${cleanPath}`;
+  };
+  
+  const photoUrl = getPhotoUrl(photoPath);
+  console.log('🔗 Generierte Foto-URL:', photoUrl);
+  
+  if (!photoUrl) {
     return (
-      <div>
-        <div className="section-header">
-          <h2>Dashboard</h2>
-          <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
+      <div className="photo-modal-overlay" onClick={onClose}>
+        <div className="photo-modal-content">
+          <button className="photo-modal-close" onClick={onClose}>
+            <X size={24} />
+          </button>
+          <div style={{ padding: '20px', textAlign: 'center' }}>
+            <p>❌ Foto nicht verfügbar</p>
+          </div>
         </div>
-        <p>Lade Daten...</p>
       </div>
     );
   }
-
-  const kpiCards = [
-    {
-      label: 'Bestellungen diesen Monat',
-      value: data.kpis.totalOrders || 0,
-      icon: Package,
-      trend: data.kpis.ordersTrend,
-      color: '#2563eb',
-      bgColor: '#dbeafe'
-    },
-    {
-      label: 'Bestellungen heute',
-      value: data.kpis.ordersToday || 0,
-      icon: Clock,
-      color: '#7c3aed',
-      bgColor: '#ede9fe'
-    },
-    {
-      label: 'Offene Sendungen',
-      value: data.kpis.pendingShipments || 0,
-      icon: Truck,
-      color: '#dc2626',
-      bgColor: '#fecaca'
-    },
-    {
-      label: 'Umsatz diesen Monat',
-      value: `€${(data.kpis.revenue || 0).toFixed(2)}`,
-      icon: DollarSign,
-      color: '#059669',
-      bgColor: '#d1fae5'
-    },
-    {
-      label: 'Versendete Pakete',
-      value: data.kpis.packagesShipped || 0,
-      icon: Package,
-      color: '#0891b2',
-      bgColor: '#cffafe'
-    },
-    {
-      label: 'Retourenquote',
-      value: `${data.kpis.returnRate || 0}%`,
-      icon: TrendingUp,
-      color: '#c2410c',
-      bgColor: '#ffedd5'
-    }
-  ];
-
+  
   return (
-    <div>
-      <div className="section-header">
-        <h2>Dashboard</h2>
-        <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
-      </div>
-      
-      <div className="kpi-grid">
-        {kpiCards.map((kpi, index) => (
-          <div key={index} className="kpi-card">
-            <div className="kpi-header">
-              <div className="kpi-info">
-                <p className="kpi-label">{kpi.label}</p>
-                <h3 className="kpi-value">{kpi.value}</h3>
-                {kpi.trend !== undefined && (
-                  <p className={`kpi-trend ${kpi.trend > 0 ? 'positive' : kpi.trend < 0 ? 'negative' : 'neutral'}`}>
-                    {kpi.trend > 0 ? '↗' : kpi.trend < 0 ? '↘' : '→'}
-                    {Math.abs(kpi.trend)}% vs. Vormonat
-                  </p>
-                )}
+    <div className="photo-modal-overlay" onClick={onClose}>
+      <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="photo-modal-close" onClick={onClose}>
+          <X size={24} />
+        </button>
+        <img 
+          src={photoUrl}
+          alt="Warenannahme Foto" 
+          className="photo-modal-image"
+          onLoad={() => console.log('✅ Foto geladen:', photoUrl)}
+          onError={(e) => {
+            console.error('❌ Foto-Fehler:', photoUrl);
+            e.target.style.display = 'none';
+            e.target.parentElement.innerHTML += `
+              <div style="padding: 20px; text-align: center;">
+                <p>❌ Foto konnte nicht geladen werden</p>
+                <p>URL: ${photoUrl}</p>
               </div>
-              <div 
-                className="kpi-icon" 
-                style={{ 
-                  backgroundColor: kpi.bgColor,
-                  color: kpi.color 
-                }}
-              >
-                <kpi.icon size={24} />
-              </div>
-            </div>
-          </div>
-        ))}
+            `;
+          }}
+        />
       </div>
     </div>
   );
 };
 
-const OrdersView = ({ data }) => (
-  <div>
-    <div className="section-header">
-      <h2>Bestellungen</h2>
-    </div>
-    <p>Bestellübersicht wird hier angezeigt...</p>
-  </div>
-);
-
-const ReportsView = () => (
-  <div>
-    <div className="section-header">
-      <h2>Berichte</h2>
-    </div>
-    <p>Berichte werden hier angezeigt...</p>
-  </div>
-);
-
-// === MITARBEITER KOMPONENTEN ===
+// Mitarbeiter-Komponenten
 const EmployeeOverview = ({ data, onRefresh }) => (
   <div>
     <div className="section-header">
@@ -515,45 +355,61 @@ const EmployeeOverview = ({ data, onRefresh }) => (
       <div className="kpi-grid">
         <div className="kpi-card">
           <div className="kpi-header">
-            <h3>Heutige Anlieferungen</h3>
-            <ClipboardList className="kpi-icon" />
+            <div className="kpi-info">
+              <h3>Heutige Anlieferungen</h3>
+              <div className="kpi-value">{data.stats.heutigeAnlieferungen || 0}</div>
+              <div className="kpi-subtitle">Anlieferungen heute</div>
+            </div>
+            <div className="kpi-icon">
+              <ClipboardList size={24} />
+            </div>
           </div>
-          <div className="kpi-value">{data.stats.HeutigeAnlieferungen || 0}</div>
-          <div className="kpi-subtitle">Anlieferungen heute</div>
         </div>
         
         <div className="kpi-card">
           <div className="kpi-header">
-            <h3>Offene Einlagerungen</h3>
-            <AlertCircle className="kpi-icon" />
+            <div className="kpi-info">
+              <h3>Offene Einlagerungen</h3>
+              <div className="kpi-value">{data.stats.offeneEinlagerungen || 0}</div>
+              <div className="kpi-subtitle">Warten auf Einlagerung</div>
+            </div>
+            <div className="kpi-icon">
+              <AlertCircle size={24} />
+            </div>
           </div>
-          <div className="kpi-value">{data.stats.OffeneEinlagerungen || 0}</div>
-          <div className="kpi-subtitle">Warten auf Einlagerung</div>
         </div>
         
         <div className="kpi-card">
           <div className="kpi-header">
-            <h3>In Bearbeitung</h3>
-            <Package className="kpi-icon" />
+            <div className="kpi-info">
+              <h3>In Bearbeitung</h3>
+              <div className="kpi-value">{data.stats.inBearbeitung || 0}</div>
+              <div className="kpi-subtitle">Werden eingelagert</div>
+            </div>
+            <div className="kpi-icon">
+              <Package size={24} />
+            </div>
           </div>
-          <div className="kpi-value">{data.stats.InBearbeitung || 0}</div>
-          <div className="kpi-subtitle">Werden eingelagert</div>
         </div>
         
         <div className="kpi-card">
           <div className="kpi-header">
-            <h3>Gesamte Packstücke</h3>
-            <Truck className="kpi-icon" />
+            <div className="kpi-info">
+              <h3>Gesamte Packstücke</h3>
+              <div className="kpi-value">{data.stats.gesamtPackstuecke || 0}</div>
+              <div className="kpi-subtitle">Letzter Monat</div>
+            </div>
+            <div className="kpi-icon">
+              <Truck size={24} />
+            </div>
           </div>
-          <div className="kpi-value">{data.stats.GesamtPackstuecke || 0}</div>
-          <div className="kpi-subtitle">Letzter Monat</div>
         </div>
       </div>
     )}
     
     <div className="recent-activities">
       <h3>Neueste Warenannahmen</h3>
-      {data.list && data.list.length > 0 ? (
+      {data.list && Array.isArray(data.list) && data.list.length > 0 ? (
         <div className="activity-list">
           {data.list.slice(0, 5).map((item) => (
             <div key={item.kWarenannahme} className="activity-item">
@@ -576,37 +432,51 @@ const EmployeeOverview = ({ data, onRefresh }) => (
   </div>
 );
 
-// ERWEITERTE GoodsReceiptList MIT SUCHE UND FILTER
+// Warenannahmen-Liste
 const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLabelPrint }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('alle');
   const [filteredData, setFilteredData] = useState([]);
 
-  // Filter-Logik
   useEffect(() => {
-    if (!data.list) {
+    if (!data.list || !Array.isArray(data.list)) {
       setFilteredData([]);
       return;
     }
 
     let filtered = [...data.list];
 
-    // Suchfilter (ID oder Kunde)
     if (searchTerm) {
       filtered = filtered.filter(item => 
-        item.kWarenannahme.toString().includes(searchTerm) ||
+        (item.kWarenannahme && item.kWarenannahme.toString().includes(searchTerm)) ||
         (item.KundenFirma && item.KundenFirma.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (item.cTransporteur && item.cTransporteur.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
-    // Status-Filter
     if (statusFilter !== 'alle') {
       filtered = filtered.filter(item => item.cStatus === statusFilter);
     }
 
     setFilteredData(filtered);
   }, [data.list, searchTerm, statusFilter]);
+
+  if (!data.list || !Array.isArray(data.list)) {
+    return (
+      <div>
+        <div className="section-header">
+          <h2>Warenannahmen Übersicht</h2>
+          <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
+        </div>
+        <div className="error-container">
+          <p>⚠️ Fehler beim Laden der Warenannahmen.</p>
+          <button onClick={onRefresh} className="retry-button">
+            Erneut versuchen
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -670,8 +540,7 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
         </div>
       </div>
       
-      {/* Ergebnisinfo */}
-      {searchTerm || statusFilter !== 'alle' ? (
+      {(searchTerm || statusFilter !== 'alle') && (
         <div style={{
           marginBottom: '16px',
           padding: '8px 16px',
@@ -680,9 +549,9 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
           fontSize: '14px',
           color: '#666'
         }}>
-          {filteredData.length} von {data.list?.length || 0} Einträgen gefunden
+          {filteredData.length} von {data.list.length} Einträgen gefunden
         </div>
-      ) : null}
+      )}
       
       {filteredData.length > 0 ? (
         <div className="goods-receipt-table">
@@ -717,65 +586,146 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
                   <td>
                     {item.cFotoPath ? (
                       <button 
+                        onClick={() => {
+                          console.log('🖱️ Foto-Button geklickt, Pfad:', item.cFotoPath);
+                          onPhotoClick(item.cFotoPath);
+                        }}
                         className="photo-button"
-                        onClick={() => onPhotoClick(item.cFotoPath)}
                         title="Foto anzeigen"
                       >
                         <Image size={16} />
                       </button>
                     ) : (
-                      <span className="no-photo">—</span>
+                      <span style={{ color: '#ccc', fontSize: '12px' }}>Kein Foto</span>
                     )}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button 
-                        className="action-button"
-                        onClick={() => onDetailsClick(item.kWarenannahme)}
-                        title="Details anzeigen"
-                      >
-                        👁️
-                      </button>
-                      <button 
-                        className="action-button"
-                        onClick={() => onLabelPrint(item)}
-                        title="Etikett drucken"
-                      >
-                        🖨️
-                      </button>
-                    </div>
-                  </td>
+  <div style={{ display: 'flex', gap: '8px' }}>
+    <button 
+      onClick={() => onDetailsClick(item)}
+      className="action-button"
+      title="Details anzeigen"
+    >
+      <Eye size={16} />
+    </button>
+    <button 
+      onClick={() => onLabelPrint(item)}
+      className="action-button print-button"
+      title="Etikett drucken"
+    >
+      <Printer size={16} />
+    </button>
+  </div>
+</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          background: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          {searchTerm || statusFilter !== 'alle' ? (
-            <>
-              <p style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
-                Keine Warenannahmen gefunden
-              </p>
-              <p style={{ fontSize: '14px', color: '#999' }}>
-                Versuchen Sie es mit anderen Suchbegriffen oder Filtern
-              </p>
-            </>
-          ) : (
-            <p>Keine Warenannahmen vorhanden</p>
-          )}
+        <div className="empty-state">
+          <Package size={48} style={{ color: '#ccc', marginBottom: '16px' }} />
+          <h3>Keine Warenannahmen gefunden</h3>
+          <p>
+            {searchTerm || statusFilter !== 'alle' 
+              ? 'Keine Ergebnisse für die aktuelle Filterung'
+              : 'Noch keine Warenannahmen vorhanden'
+            }
+          </p>
         </div>
       )}
     </div>
   );
 };
 
+// Kunden-Komponenten
+const CustomerOverview = ({ data, onRefresh }) => {
+  if (!data.kpis) {
+    return (
+      <div>
+        <div className="section-header">
+          <h2>Dashboard</h2>
+          <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
+        </div>
+        <p>Lade Daten...</p>
+      </div>
+    );
+  }
+
+  const kpiCards = [
+    {
+      label: 'Bestellungen diesen Monat',
+      value: data.kpis.totalOrders || 0,
+      icon: Package,
+      trend: data.kpis.ordersTrend,
+      color: '#2563eb',
+      bgColor: '#dbeafe'
+    },
+    {
+      label: 'Bestellungen heute',
+      value: data.kpis.ordersToday || 0,
+      icon: Clock,
+      color: '#7c3aed',
+      bgColor: '#ede9fe'
+    },
+    {
+      label: 'Offene Sendungen',
+      value: data.kpis.pendingShipments || 0,
+      icon: Truck,
+      color: '#dc2626',
+      bgColor: '#fecaca'
+    },
+    {
+      label: 'Versendete Pakete',
+      value: data.kpis.packagesShipped || 0,
+      icon: Package,
+      color: '#0891b2',
+      bgColor: '#cffafe'
+    }
+  ];
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Dashboard</h2>
+        <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
+      </div>
+      
+      <div className="kpi-grid">
+        {kpiCards.map((kpi, index) => (
+          <div key={index} className="kpi-card">
+            <div className="kpi-header">
+              <div className="kpi-info">
+                <p className="kpi-label">{kpi.label}</p>
+                <h3 className="kpi-value">{kpi.value}</h3>
+                {kpi.trend !== undefined && (
+                  <p className={`kpi-trend ${kpi.trend > 0 ? 'positive' : kpi.trend < 0 ? 'negative' : 'neutral'}`}>
+                    {kpi.trend > 0 ? '↗' : kpi.trend < 0 ? '↘' : '→'}
+                    {Math.abs(kpi.trend)}% vs. Vormonat
+                  </p>
+                )}
+              </div>
+              <div 
+                className="kpi-icon" 
+                style={{ 
+                  backgroundColor: kpi.bgColor,
+                  color: kpi.color,
+                  borderRadius: '8px',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <kpi.icon size={24} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 
 export default Dashboard;

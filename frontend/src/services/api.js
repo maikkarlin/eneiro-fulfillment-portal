@@ -1,4 +1,4 @@
-// frontend/src/services/api.js - KORRIGIERTE VERSION
+// frontend/src/services/api.js - VOLLSTÄNDIGE VERSION mit allen Fixes
 import axios from 'axios';
 
 // API Base URL - WICHTIG: Muss auf Ihren Server zeigen!
@@ -53,8 +53,13 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API
+// Auth API - ERWEITERT mit neuer getCustomerData Funktion
 export const authAPI = {
+  // NEU: Kundendaten abrufen (immer, egal ob registriert)
+  getCustomerData: (customerNumber) => 
+    api.post('/auth/get-customer-data', { customerNumber }),
+  
+  // BESTEHENDE Funktionen
   checkCustomer: (customerNumber) => 
     api.post('/auth/check-customer', { customerNumber }),
   
@@ -68,7 +73,7 @@ export const authAPI = {
     api.get('/auth/employees'),
 };
 
-// Dashboard API
+// Dashboard API - UNVERÄNDERT
 export const dashboardAPI = {
   getKPIs: () => 
     api.get('/dashboard/kpis'),
@@ -83,16 +88,27 @@ export const dashboardAPI = {
     api.get('/dashboard/available-months'),
 };
 
-// Warenannahme API
+// Warenannahme API - VOLLSTÄNDIG mit allen benötigten Funktionen
 export const goodsReceiptAPI = {
+  // ✅ Alle Warenannahmen (für Mitarbeiter)
   getAll: (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
     return api.get(`/goods-receipt?${params}`);
   },
   
+  // ✅ Warenannahmen für angemeldeten Kunden
+  getCustomerReceipts: () => 
+    api.get('/goods-receipt/customer'),
+  
+  // ✅ Einzelne Warenannahme (für Mitarbeiter)
   getById: (id) => 
     api.get(`/goods-receipt/${id}`),
   
+  // ✅ Einzelne Warenannahme für Kunden
+  getCustomerReceiptById: (id) => 
+    api.get(`/goods-receipt/customer/${id}`),
+  
+  // ✅ Neue Warenannahme erstellen
   create: (formData) => {
     return api.post('/goods-receipt', formData, {
       headers: {
@@ -101,6 +117,7 @@ export const goodsReceiptAPI = {
     });
   },
   
+  // ✅ Warenannahme aktualisieren
   update: (id, formData) => {
     return api.put(`/goods-receipt/${id}`, formData, {
       headers: {
@@ -109,21 +126,26 @@ export const goodsReceiptAPI = {
     });
   },
   
+  // ✅ Status aktualisieren (nur für Mitarbeiter)
+  updateStatus: (id, status) => 
+    api.patch(`/goods-receipt/${id}/status`, { cStatus: status }),
+  
+  // ✅ Warenannahme löschen
   delete: (id) => 
     api.delete(`/goods-receipt/${id}`),
-
+  
+  // ✅ Statistiken für Dashboard - KORRIGIERT
   getStats: () => 
-    api.get('/goods-receipt/stats/dashboard'),
-
+    api.get('/goods-receipt/stats'),
 };
 
-// Customers API
+// Customers API - UNVERÄNDERT
 export const customersAPI = {
   getAll: () => 
     api.get('/customers'),
 };
 
-// Blocklager API
+// Blocklager API - UNVERÄNDERT
 export const blocklagerAPI = {
   searchArticle: (query) => 
     api.get(`/blocklager/artikel/search?q=${encodeURIComponent(query)}`),

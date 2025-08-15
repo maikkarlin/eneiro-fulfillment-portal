@@ -1,3 +1,4 @@
+// frontend/src/components/Login.js
 import React, { useState } from 'react';
 import { authAPI } from '../services/api';
 import './Login.css';
@@ -13,7 +14,7 @@ const Login = ({ onLogin }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isRegistered, setIsRegistered] = useState(false); // NEU
+  const [isRegistered, setIsRegistered] = useState(false);
 
   // === MITARBEITER LOGIN ===
   const handleEmployeeLogin = async (e) => {
@@ -34,44 +35,28 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  // === KUNDE LOGIN/REGISTRIERUNG ===
+  // === KUNDE LOGIN/REGISTRIERUNG - REPARIERT ===
   const handleCustomerCheck = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const response = await authAPI.checkCustomer(customerNumber);
+      console.log('🔍 Lade Kundendaten für:', customerNumber);
+      
+      // REPARIERT: Verwende neuen Endpoint der IMMER Daten zurückgibt
+      const response = await authAPI.getCustomerData(customerNumber);
+      
+      console.log('✅ Kundendaten erhalten:', response.data);
+      
       setCustomer(response.data.customer);
-      setIsRegistered(false); // Nicht registriert
+      setIsRegistered(response.data.isRegistered);
       setStep(2);
+      setError(''); // Fehler löschen
+      
     } catch (err) {
-      // KORRIGIERT: Bei "bereits registriert" trotzdem zu Schritt 2
-      if (err.response?.data?.error?.includes('bereits registriert')) {
-        console.log('🔄 Kunde bereits registriert - lade Kundendaten für Login...');
-        
-        // Versuche Kundendaten trotzdem zu laden für das Login-Formular
-        try {
-          // Hack: Rufe die Customer-Daten direkt ab
-          const response = await authAPI.checkCustomer(customerNumber);
-          setCustomer(response.data.customer);
-        } catch (secondError) {
-          // Falls das nicht geht, setze minimale Kundendaten
-          setCustomer({
-            kKunde: null,
-            customerNumber: customerNumber,
-            company: 'Kunde ' + customerNumber,
-            name: '',
-            emails: ['test2@example.com'] // Fallback für bekannte E-Mail
-          });
-        }
-        
-        setIsRegistered(true); // Bereits registriert
-        setStep(2); // Trotzdem zu Login-Schritt
-        setError(''); // Fehler löschen
-      } else {
-        setError(err.response?.data?.error || 'Fehler bei der Kundenprüfung');
-      }
+      console.error('❌ Fehler beim Laden der Kundendaten:', err);
+      setError(err.response?.data?.error || 'Fehler bei der Kundenprüfung');
     } finally {
       setLoading(false);
     }
@@ -130,6 +115,8 @@ const Login = ({ onLogin }) => {
                 setError('');
                 setFormData({ email: '', password: '' });
                 setIsRegistered(false);
+                setCustomer(null);
+                setCustomerNumber('');
               }}
             >
               🏢 Kunde
@@ -142,6 +129,8 @@ const Login = ({ onLogin }) => {
                 setError('');
                 setFormData({ email: '', password: '' });
                 setIsRegistered(false);
+                setCustomer(null);
+                setCustomerNumber('');
               }}
             >
               👤 Mitarbeiter
@@ -149,20 +138,24 @@ const Login = ({ onLogin }) => {
           </div>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {/* ERROR DISPLAY */}
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
 
-        {/* === MITARBEITER LOGIN FORM === */}
+        {/* === MITARBEITER LOGIN === */}
         {loginType === 'employee' && (
-          <form onSubmit={handleEmployeeLogin} className="login-form">
-            <h2>Mitarbeiter Anmeldung</h2>
+          <form onSubmit={handleEmployeeLogin}>
             <div className="form-group">
-              <label>JTL Login:</label>
+              <label>Benutzername/Login:</label>
               <input
                 type="text"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="JTL Benutzername eingeben"
                 required
-                placeholder="Ihr JTL Benutzername (z.B. mkarlin)"
               />
             </div>
             <div className="form-group">
@@ -172,7 +165,6 @@ const Login = ({ onLogin }) => {
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                 required
-                placeholder="Ihr JTL Passwort"
               />
             </div>
             <button type="submit" disabled={loading} className="submit-button">
@@ -183,16 +175,15 @@ const Login = ({ onLogin }) => {
 
         {/* === KUNDE LOGIN/REGISTRIERUNG === */}
         {loginType === 'customer' && step === 1 && (
-          <form onSubmit={handleCustomerCheck} className="login-form">
-            <h2>Kundennummer eingeben</h2>
+          <form onSubmit={handleCustomerCheck}>
             <div className="form-group">
               <label>Kundennummer:</label>
               <input
                 type="text"
                 value={customerNumber}
                 onChange={(e) => setCustomerNumber(e.target.value)}
+                placeholder="Ihre Kundennummer eingeben"
                 required
-                placeholder="Ihre Kundennummer"
               />
             </div>
             <button type="submit" disabled={loading} className="submit-button">
@@ -231,13 +222,16 @@ const Login = ({ onLogin }) => {
                         ))}
                       </select>
                     ) : (
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        placeholder="E-Mail eingeben"
-                        required
-                      />
+                      <div className="no-emails-found">
+                        <p>⚠️ Keine E-Mail-Adressen gefunden</p>
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({...formData, email: e.target.value})}
+                          placeholder="E-Mail eingeben"
+                          required
+                        />
+                      </div>
                     )}
                   </div>
                   <div className="form-group">
@@ -256,7 +250,7 @@ const Login = ({ onLogin }) => {
               </div>
 
               {/* NUR REGISTRIERUNG ANZEIGEN WENN NICHT BEREITS REGISTRIERT */}
-              {!isRegistered && (
+              {!isRegistered && customer.emails && customer.emails.length > 0 && (
                 <div className="option-card">
                   <h4>Erstmalige Registrierung</h4>
                   <form onSubmit={handleRegister}>
@@ -290,6 +284,14 @@ const Login = ({ onLogin }) => {
                   </form>
                 </div>
               )}
+
+              {/* INFO WENN KEINE E-MAILS GEFUNDEN */}
+              {!isRegistered && (!customer.emails || customer.emails.length === 0) && (
+                <div className="option-card">
+                  <h4>⚠️ Keine E-Mail-Adressen gefunden</h4>
+                  <p>Für diese Kundennummer sind keine E-Mail-Adressen hinterlegt. Bitte kontaktieren Sie den Support.</p>
+                </div>
+              )}
             </div>
 
             <button 
@@ -299,6 +301,7 @@ const Login = ({ onLogin }) => {
                 setCustomerNumber('');
                 setFormData({ email: '', password: '' });
                 setIsRegistered(false);
+                setError('');
               }}
               className="back-button"
             >

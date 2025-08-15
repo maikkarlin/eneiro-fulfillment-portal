@@ -762,3 +762,11 @@
     transform: translateY(0) scale(1);
   }
 }
+
+.print-button {
+  color: #1976d2 !important;
+}
+
+.print-button:hover {
+  background: #e3f2fd !important;
+}

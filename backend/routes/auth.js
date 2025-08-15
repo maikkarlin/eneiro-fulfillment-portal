@@ -1,8 +1,9 @@
+// backend/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const Employee = require('../models/Employee'); // NEU
+const Employee = require('../models/Employee');
 const Customer = require('../models/Customer');
 const { generateToken } = require('../utils/jwt');
 
@@ -11,8 +12,54 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Auth-Routes funktionieren!' });
 });
 
-// === KUNDE LOGIN SYSTEM (bestehend) ===
-// Registrierung - Schritt 1: Kundennummer prüfen
+// === KUNDE LOGIN SYSTEM ===
+
+// NEU: Kundendaten abrufen (IMMER, egal ob registriert oder nicht)
+router.post('/get-customer-data', async (req, res) => {
+  try {
+    const { customerNumber } = req.body;
+    
+    if (!customerNumber) {
+      return res.status(400).json({ 
+        error: 'Kundennummer ist erforderlich' 
+      });
+    }
+    
+    // Kunde in JTL suchen
+    const customer = await Customer.findByCustomerNumber(customerNumber);
+    
+    if (!customer) {
+      return res.status(404).json({ 
+        error: 'Kundennummer nicht gefunden' 
+      });
+    }
+    
+    // Prüfe ob bereits registriert
+    const isRegistered = await User.isCustomerRegistered(customer.kKunde);
+    
+    // Hole alle E-Mail-Adressen des Kunden
+    const emails = await Customer.getCustomerEmails(customer.kKunde);
+    
+    // IMMER Daten zurückgeben, egal ob registriert oder nicht
+    res.json({
+      message: isRegistered ? 'Kunde bereits registriert' : 'Kunde gefunden',
+      customer: {
+        kKunde: customer.kKunde,
+        customerNumber: customer.cKundenNr,
+        company: customer.cFirma,
+        name: `${customer.cVorname || ''} ${customer.cName || ''}`.trim(),
+        emails: emails
+      },
+      isRegistered: isRegistered
+    });
+    
+  } catch (error) {
+    console.error('Get customer data error:', error);
+    res.status(500).json({ error: 'Serverfehler: ' + error.message });
+  }
+});
+
+// Registrierung - Schritt 1: Kundennummer prüfen (ALTER ENDPOINT - für Kompatibilität)
 router.post('/check-customer', async (req, res) => {
   try {
     const { customerNumber } = req.body;
@@ -172,11 +219,10 @@ router.post('/login', async (req, res) => {
       
       if (!user) {
         return res.status(401).json({ 
-          error: 'Ungültige Anmeldedaten - User nicht gefunden' 
+          error: 'Ungültige Anmeldedaten - E-Mail nicht gefunden' 
         });
       }
       
-      // Passwort prüfen
       const validPassword = await bcrypt.compare(password, user.cPasswordHash);
       
       if (!validPassword) {
@@ -185,26 +231,35 @@ router.post('/login', async (req, res) => {
         });
       }
       
-      // Login-Zeit aktualisieren
+      if (!user.nAktiv) {
+        return res.status(401).json({ 
+          error: 'Account ist deaktiviert. Kontaktieren Sie den Support.' 
+        });
+      }
+      
+      // Letzten Login aktualisieren
       await User.updateLastLogin(user.kPortalUser);
       
       // JWT Token für Kunde erstellen
       const token = generateToken({
         id: user.kPortalUser,
-        kKunde: user.kKunde,
         email: user.cEmail,
+        kKunde: user.kKunde,
+        role: 'customer',
         customerNumber: user.cKundenNr,
-        role: 'customer'
+        company: user.cFirma,
+        name: user.cName
       });
       
       res.json({
         token,
         user: {
           id: user.kPortalUser,
+          email: user.cEmail,
+          kKunde: user.kKunde,
           customerNumber: user.cKundenNr,
           company: user.cFirma,
-          name: `${user.cVorname || ''} ${user.cName || ''}`.trim(),
-          email: user.cEmail,
+          name: user.cName,
           role: 'customer'
         }
       });
@@ -212,19 +267,7 @@ router.post('/login', async (req, res) => {
     
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Serverfehler beim Login: ' + error.message });
-  }
-});
-
-// === MITARBEITER-SPEZIFISCHE ROUTES ===
-// Alle aktiven Mitarbeiter abrufen (für Dropdowns etc.)
-router.get('/employees', async (req, res) => {
-  try {
-    const employees = await Employee.getAllActive();
-    res.json(employees);
-  } catch (error) {
-    console.error('Get employees error:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Mitarbeiter' });
+    res.status(500).json({ error: 'Serverfehler beim Login' });
   }
 });
 
