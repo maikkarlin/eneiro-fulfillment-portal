@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # =======================================================
-# 🚀 FULFILLMENT PORTAL - FRESH SYSTEM DEPLOYMENT
+# 🚀 ENEIRO FULFILLMENT PORTAL - DEPLOYMENT SCRIPT
 # =======================================================
-# Ubuntu 24.04 LTS - Komplett frisches System
-# Author: Claude & User Collaboration  
-# Version: 3.0 (August 2025) - FRESH SYSTEM READY
+# Ubuntu 24.04 LTS - Korrekte GitHub Integration
+# Repository: eneiro-fulfillment-portal
+# User: maikkarlin
+# Version: 4.0 (August 2025) - KORREKTE GITHUB STRUKTUR
 # =======================================================
 
 set -e  # Exit on error
@@ -18,20 +19,22 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
-# Konfiguration
+# ====== KORREKTE KONFIGURATION ======
 APP_NAME="eneiro-fulfillment-portal"
 APP_USER="fulfillment"
 APP_HOME="/home/$APP_USER"
 APP_DIR="$APP_HOME/$APP_NAME"
-GITHUB_REPO="https://github.com/maikkarlin/$APP_NAME.git"  # ANPASSEN!
+GITHUB_REPO="https://github.com/maikkarlin/eneiro-fulfillment-portal.git"
 NODE_VERSION="20"  # LTS Version
+BACKEND_PORT="5000"  # ✅ KORREKT: Server läuft auf Port 5000
 
 echo -e "${PURPLE}=======================================================${NC}"
-echo -e "${PURPLE}🚀 FULFILLMENT PORTAL - FRESH SYSTEM DEPLOYMENT${NC}"
+echo -e "${PURPLE}🚀 ENEIRO FULFILLMENT PORTAL DEPLOYMENT${NC}"
 echo -e "${PURPLE}=======================================================${NC}"
 echo -e "${BLUE}📅 $(date)${NC}"
 echo -e "${BLUE}🖥️  System: $(lsb_release -d | cut -f2)${NC}"
-echo -e "${BLUE}🏗️  Deployment für: $APP_NAME${NC}"
+echo -e "${BLUE}🏗️  Repository: maikkarlin/eneiro-fulfillment-portal${NC}"
+echo -e "${BLUE}🌐 Backend Port: $BACKEND_PORT${NC}"
 
 # Root check
 if [[ $EUID -ne 0 ]]; then
@@ -68,7 +71,7 @@ echo -e "${GREEN}✅ System vorbereitet${NC}"
 
 echo -e "${YELLOW}📦 System Update & Dependencies...${NC}"
 
-# Package lists aktualisieren (mehrfach für Sicherheit)
+# Package lists aktualisieren
 echo -e "${BLUE}🔄 Aktualisiere Package Lists...${NC}"
 apt update
 apt update  # Doppelt für frische Systeme
@@ -137,10 +140,6 @@ echo -e "${YELLOW}👤 Erstelle App-User '$APP_USER'...${NC}"
 # User erstellen mit Home Directory
 if ! id "$APP_USER" &>/dev/null; then
     useradd -m -s /bin/bash -G www-data "$APP_USER"
-    
-    # Sudoers für PM2 (nur für PM2 commands)
-    echo "$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart $APP_USER-pm2, /usr/bin/systemctl start $APP_USER-pm2, /usr/bin/systemctl stop $APP_USER-pm2" > /etc/sudoers.d/$APP_USER
-    
     echo -e "${GREEN}✅ User '$APP_USER' erstellt${NC}"
 else
     echo -e "${BLUE}ℹ️  User '$APP_USER' existiert bereits${NC}"
@@ -153,30 +152,32 @@ sudo -u "$APP_USER" chmod 700 "$APP_HOME/.ssh"
 echo -e "${GREEN}✅ App-User konfiguriert${NC}"
 
 # =======================================================
-# 📁 VERZEICHNISSE ERSTELLEN
+# 📁 VERZEICHNISSE ERSTELLEN (KORREKT!)
 # =======================================================
 
 echo -e "${YELLOW}📁 Erstelle App-Verzeichnisse...${NC}"
 
-# Alle nötigen Verzeichnisse
+# Alle nötigen Verzeichnisse basierend auf der echten Struktur
 sudo -u "$APP_USER" mkdir -p "$APP_DIR"
-sudo -u "$APP_USER" mkdir -p "$APP_DIR/backend/uploads/warenannahme"
+sudo -u "$APP_USER" mkdir -p "$APP_DIR/backend/uploads"
+sudo -u "$APP_USER" mkdir -p "$APP_DIR/backend/uploads/warenannahme"  # ✅ Für Fotos
+sudo -u "$APP_USER" mkdir -p "$APP_DIR/backend/uploads/documents"     # ✅ Für PDFs
 sudo -u "$APP_USER" mkdir -p "$APP_DIR/logs"
 sudo -u "$APP_USER" mkdir -p "$APP_DIR/backup"
 sudo -u "$APP_USER" mkdir -p "$APP_HOME/.pm2"
 
-echo -e "${GREEN}✅ Verzeichnisse erstellt${NC}"
+echo -e "${GREEN}✅ Alle Upload-Verzeichnisse erstellt${NC}"
 
 # =======================================================
-# 📥 GITHUB CODE
+# 📥 GITHUB CODE (KORREKT!)
 # =======================================================
 
 echo -e "${YELLOW}📥 Code von GitHub laden...${NC}"
 
 # Git Konfiguration für App-User
 sudo -u "$APP_USER" git config --global init.defaultBranch main
-sudo -u "$APP_USER" git config --global user.name "Fulfillment Deployment"
-sudo -u "$APP_USER" git config --global user.email "deploy@localhost"
+sudo -u "$APP_USER" git config --global user.name "Eneiro Deployment"
+sudo -u "$APP_USER" git config --global user.email "deploy@eneiro.io"
 
 # Repository klonen
 if [ -d "$APP_DIR/.git" ]; then
@@ -186,12 +187,12 @@ if [ -d "$APP_DIR/.git" ]; then
     sudo -u "$APP_USER" git reset --hard origin/main
     sudo -u "$APP_USER" git pull origin main
 else
-    echo -e "${BLUE}ℹ️  Klone Repository...${NC}"
+    echo -e "${BLUE}ℹ️  Klone Repository: maikkarlin/eneiro-fulfillment-portal${NC}"
     sudo -u "$APP_USER" git clone "$GITHUB_REPO" "$APP_DIR"
 fi
 
 cd "$APP_DIR"
-echo -e "${GREEN}✅ Code geladen${NC}"
+echo -e "${GREEN}✅ Code von GitHub geladen${NC}"
 
 # =======================================================
 # 🔧 BACKEND SETUP
@@ -217,7 +218,7 @@ if [ ! -f ".env" ]; then
     echo -e "${BLUE}📝 Erstelle .env...${NC}"
     sudo -u "$APP_USER" cat > .env << 'EOL'
 # ===========================================
-# FULFILLMENT PORTAL - PRODUCTION CONFIG
+# ENEIRO FULFILLMENT PORTAL - PRODUCTION CONFIG
 # ===========================================
 
 # Datenbank Konfiguration (ANPASSEN!)
@@ -229,12 +230,12 @@ DB_ENCRYPT=true
 DB_TRUST_SERVER_CERTIFICATE=true
 
 # JWT Secret (32+ Zeichen!)
-JWT_SECRET=super_sicherer_jwt_secret_mindestens_32_zeichen_lang
+JWT_SECRET=super_sicherer_jwt_secret_mindestens_32_zeichen_lang_fuer_eneiro
 
-# Server Konfiguration
-PORT=3001
+# Server Konfiguration (KORREKT!)
+PORT=5000
 NODE_ENV=production
-HOST=localhost
+HOST=0.0.0.0
 
 # Upload Konfiguration
 UPLOAD_MAX_SIZE=50MB
@@ -283,25 +284,25 @@ fi
 echo -e "${GREEN}✅ Frontend Build erfolgreich${NC}"
 
 # =======================================================
-# 🚀 PM2 PROCESS MANAGER
+# 🚀 PM2 PROCESS MANAGER (KORREKT!)
 # =======================================================
 
 echo -e "${YELLOW}🚀 PM2 Konfiguration...${NC}"
 
 cd "$APP_DIR"
 
-# PM2 Ecosystem
-sudo -u "$APP_USER" cat > ecosystem.config.js << 'EOL'
+# PM2 Ecosystem mit korrekten Pfaden
+sudo -u "$APP_USER" cat > ecosystem.config.js << EOL
 module.exports = {
   apps: [{
-    name: 'fulfillment-backend',
+    name: 'eneiro-fulfillment-backend',
     script: './backend/server.js',
-    cwd: '/home/fulfillment/fulfillment-portal',
+    cwd: '$APP_DIR',
     instances: 1,
     exec_mode: 'cluster',
     env: {
       NODE_ENV: 'production',
-      PORT: 3001
+      PORT: $BACKEND_PORT
     },
     error_file: './logs/backend-error.log',
     out_file: './logs/backend-out.log',
@@ -321,7 +322,7 @@ EOL
 echo -e "${BLUE}▶️  Starte PM2...${NC}"
 sudo -u "$APP_USER" bash -c "
 cd $APP_DIR
-pm2 delete fulfillment-backend 2>/dev/null || true
+pm2 delete eneiro-fulfillment-backend 2>/dev/null || true
 pm2 start ecosystem.config.js
 pm2 save
 "
@@ -349,7 +350,7 @@ chmod -R 750 "$APP_DIR/logs"
 chmod 600 "$APP_DIR/backend/.env"
 chmod -R 755 "$APP_DIR/frontend/build"
 
-# Firewall
+# Firewall (KORREKTE PORTS!)
 echo -e "${BLUE}🔥 Firewall Setup...${NC}"
 ufw --force enable
 ufw default deny incoming
@@ -357,7 +358,7 @@ ufw default allow outgoing
 ufw allow ssh
 ufw allow 80
 ufw allow 443
-ufw allow from 127.0.0.1 to any port 3001
+ufw allow from 127.0.0.1 to any port $BACKEND_PORT  # ✅ Port 5000
 
 # Fail2ban für SSH
 systemctl enable fail2ban
@@ -374,17 +375,27 @@ echo -e "${YELLOW}📊 System Check...${NC}"
 sleep 3
 
 # Service Status
-echo -e "${BLUE}🔍 Service Status:${NC}"
+echo -e "${BLUE}🔍 PM2 Status:${NC}"
 sudo -u "$APP_USER" pm2 status
 
-# Port Check
+# Port Check (KORREKT!)
 echo -e "${BLUE}🔌 Port Check:${NC}"
-if netstat -tlnp | grep :3001 > /dev/null; then
-    echo -e "${GREEN}✅ Backend Port 3001 aktiv${NC}"
+if netstat -tlnp | grep :$BACKEND_PORT > /dev/null; then
+    echo -e "${GREEN}✅ Backend Port $BACKEND_PORT aktiv${NC}"
 else
-    echo -e "${RED}❌ Backend Port 3001 NICHT aktiv${NC}"
+    echo -e "${RED}❌ Backend Port $BACKEND_PORT NICHT aktiv${NC}"
     echo -e "${YELLOW}💡 Logs: sudo -u $APP_USER pm2 logs${NC}"
 fi
+
+# Upload-Verzeichnisse prüfen
+echo -e "${BLUE}📁 Upload-Verzeichnisse:${NC}"
+for dir in "uploads" "uploads/warenannahme" "uploads/documents"; do
+    if [ -d "$APP_DIR/backend/$dir" ]; then
+        echo -e "  ${GREEN}✅ $dir${NC}"
+    else
+        echo -e "  ${RED}❌ $dir${NC}"
+    fi
+done
 
 # System Resources
 echo -e "${BLUE}💻 System Status:${NC}"
@@ -398,14 +409,13 @@ echo "Ubuntu: $(lsb_release -rs)"
 echo "Node.js: $(node --version)"
 echo "npm: $(npm --version)"  
 echo "PM2: $(pm2 --version)"
-echo "Nginx: $(nginx -v 2>&1 | cut -d' ' -f3)"
 
 # =======================================================
 # 🎉 SUCCESS
 # =======================================================
 
 echo -e "${GREEN}=======================================================${NC}"
-echo -e "${GREEN}🎉 FRESH SYSTEM DEPLOYMENT ERFOLGREICH!${NC}"
+echo -e "${GREEN}🎉 ENEIRO FULFILLMENT PORTAL DEPLOYMENT ERFOLGREICH!${NC}"
 echo -e "${GREEN}=======================================================${NC}"
 
 echo -e "${PURPLE}📋 NÄCHSTE SCHRITTE:${NC}"
@@ -414,19 +424,19 @@ echo -e "${YELLOW}1. 🔑 Datenbank konfigurieren:${NC}"
 echo -e "   sudo nano $APP_DIR/backend/.env"
 echo -e ""
 echo -e "${YELLOW}2. 🔄 Backend neu starten:${NC}"
-echo -e "   sudo -u $APP_USER pm2 restart fulfillment-backend"
+echo -e "   sudo -u $APP_USER pm2 restart eneiro-fulfillment-backend"
 echo -e ""
 echo -e "${YELLOW}3. 🌐 Reverse Proxy Setup:${NC}"
-echo -e "   Backend API: http://localhost:3001"
+echo -e "   Backend API: http://localhost:$BACKEND_PORT"
 echo -e "   Frontend: $APP_DIR/frontend/build/"
 echo -e ""
 echo -e "${YELLOW}4. 📊 Monitoring:${NC}"
-echo -e "   sudo -u $APP_USER pm2 logs"
+echo -e "   sudo -u $APP_USER pm2 logs eneiro-fulfillment-backend"
 echo -e "   sudo -u $APP_USER pm2 monit"
 echo -e ""
 echo -e "${YELLOW}5. 🔄 Updates:${NC}"
-echo -e "   ./update.sh  (für spätere Updates)"
+echo -e "   curl -o update.sh https://raw.githubusercontent.com/maikkarlin/eneiro-fulfillment-portal/main/update.sh"
 
 echo -e "${GREEN}=======================================================${NC}"
-echo -e "${GREEN}🚀 FULFILLMENT PORTAL READY FOR PRODUCTION!${NC}"
+echo -e "${GREEN}🚀 READY: https://ffn.eneiro.io${NC}"
 echo -e "${GREEN}=======================================================${NC}"
