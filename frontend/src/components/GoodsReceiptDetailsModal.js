@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { goodsReceiptAPI } from '../services/api';
 import './GoodsReceiptDetailsModal.css';
+import DocumentsDisplay from './DocumentsDisplay';
+import DeliveryNoteUpload from './DeliveryNoteUpload';
 
 const GoodsReceiptDetailsModal = ({ 
   goodsReceiptId, 
@@ -28,6 +30,9 @@ const GoodsReceiptDetailsModal = ({
   const [error, setError] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [documentCount, setDocumentCount] = useState(0);
+  const [reloadDocuments, setReloadDocuments] = useState(null);
 
   useEffect(() => {
     loadDetails();
@@ -109,6 +114,16 @@ const GoodsReceiptDetailsModal = ({
       </div>
     );
   }
+
+  const handleUploadClick = (reloadFn) => {
+  setReloadDocuments(() => reloadFn);
+  setShowUploadModal(true);
+  };
+
+  const handleUploadSuccess = () => {
+  setShowUploadModal(false);
+  if (reloadDocuments) reloadDocuments();
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -361,6 +376,18 @@ const GoodsReceiptDetailsModal = ({
             </div>
           )}
 
+          {/* NEU: Dokumente - HIER EINFÜGEN */}
+<div className="details-section">
+  <h3>📄 Dokumente</h3>
+  <DocumentsDisplay
+    warenannahmeId={details.kWarenannahme}
+    userRole="employee"
+    onDocumentCountChange={setDocumentCount}
+    onUploadClick={handleUploadClick}
+    hideTitle={true}
+  />
+</div>
+
           {/* Status-Änderung */}
           {!editMode && (
             <div className="details-section">
@@ -389,6 +416,14 @@ const GoodsReceiptDetailsModal = ({
           )}
         </div>
       </div>
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <DeliveryNoteUpload
+        warenannahmeId={details.kWarenannahme}
+        onUploadSuccess={handleUploadSuccess}
+        onClose={() => setShowUploadModal(false)}
+        />
+      )}
     </div>
   );
 };

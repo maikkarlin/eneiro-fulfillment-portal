@@ -157,4 +157,50 @@ export const blocklagerAPI = {
     api.get(`/blocklager/artikel/${articleNumber}/movements`),
 };
 
+// NEU: Documents API für Lieferscheine hinzufügen
+
+export const documentsAPI = {
+  // Lieferschein hochladen (nur Mitarbeiter)
+  uploadDeliveryNote: (warenannahmeId, formData) => {
+    return api.post(`/documents/upload/${warenannahmeId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  
+  // Alle Dokumente einer Warenannahme abrufen
+  getDocuments: (warenannahmeId) => 
+    api.get(`/documents/warenannahme/${warenannahmeId}`),
+  
+  // Dokument herunterladen/anzeigen
+  downloadDocument: (dokumentId) => 
+    api.get(`/documents/download/${dokumentId}`, {
+      responseType: 'blob', // Wichtig für PDF-Download
+    }),
+  
+  // Dokument löschen (nur Mitarbeiter)
+  deleteDocument: (dokumentId) => 
+    api.delete(`/documents/${dokumentId}`),
+  
+  // Helper: PDF in neuem Tab öffnen
+  openPdfInNewTab: async (dokumentId) => {
+    try {
+      const response = await api.get(`/documents/download/${dokumentId}`, {
+        responseType: 'blob',
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      
+      // URL nach kurzer Zeit freigeben
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error('Fehler beim Öffnen der PDF:', error);
+      throw error;
+    }
+  }
+};
+
 export default api;

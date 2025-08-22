@@ -1,4 +1,4 @@
-// frontend/src/components/CustomerGoodsReceipts.js - NUR FOTO-ANZEIGE REPARIERT
+// frontend/src/components/CustomerGoodsReceipts.js - KOMPLETT MIT DOKUMENT-INTEGRATION
 import React, { useState, useEffect } from 'react';
 import { 
   Package, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { goodsReceiptAPI } from '../services/api';
 import './CustomerGoodsReceipts.css';
+import DocumentsDisplay from './DocumentsDisplay';
 
 const CustomerGoodsReceipts = () => {
   const [receipts, setReceipts] = useState([]);
@@ -21,6 +22,7 @@ const CustomerGoodsReceipts = () => {
   const [error, setError] = useState('');
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [photoModal, setPhotoModal] = useState(null);
+  const [documentCounts, setDocumentCounts] = useState({});
   
   // Such- und Filter-States
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,6 +59,40 @@ const CustomerGoodsReceipts = () => {
 
     setFilteredReceipts(filtered);
   }, [receipts, searchTerm, statusFilter]);
+
+  // NEU: Dokument-Anzahl für alle Warenannahmen laden
+  useEffect(() => {
+    if (Array.isArray(receipts) && receipts.length > 0) {
+      receipts.forEach(receipt => {
+        loadDocumentCount(receipt.kWarenannahme);
+      });
+    }
+  }, [receipts]);
+
+  // NEU: Funktion zum Laden der Dokument-Anzahl
+  const loadDocumentCount = async (warenannahmeId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      
+      const response = await fetch(`${apiUrl}/documents/warenannahme/${warenannahmeId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const documents = await response.json();
+        setDocumentCounts(prev => ({
+          ...prev,
+          [warenannahmeId]: documents.length
+        }));
+      }
+    } catch (err) {
+      // Stillschweigend ignorieren - Dokumente sind optional
+      console.log('Dokumente für Warenannahme', warenannahmeId, 'konnten nicht geladen werden');
+    }
+  };
 
   const loadCustomerReceipts = async () => {
     try {
@@ -237,6 +273,7 @@ const CustomerGoodsReceipts = () => {
                 <th>Status</th>
                 <th>JTL-Nummer</th>
                 <th>Foto</th>
+                <th>Dokumente</th>
                 <th>Aktionen</th>
               </tr>
             </thead>
@@ -275,6 +312,15 @@ const CustomerGoodsReceipts = () => {
                       </button>
                     ) : (
                       <span className="no-photo">Kein Foto</span>
+                    )}
+                  </td>
+                  <td>
+                    {documentCounts[receipt.kWarenannahme] > 0 ? (
+                      <span className="documents-count-badge">
+                        📄 {documentCounts[receipt.kWarenannahme]}
+                      </span>
+                    ) : (
+                      <span className="no-documents">Keine</span>
                     )}
                   </td>
                   <td>
@@ -377,102 +423,126 @@ const PhotoModal = ({ photoPath, onClose }) => {
   );
 };
 
-// Details-Modal Komponente
-const ReceiptDetailsModal = ({ receipt, onClose }) => (
-  <div className="modal-overlay" onClick={onClose}>
-    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header">
-        <h3>Warenannahme WA-{receipt.kWarenannahme}</h3>
-        <button className="modal-close" onClick={onClose}>
-          <X size={24} />
-        </button>
-      </div>
-      
-      <div className="modal-body">
-        <div className="detail-grid">
-          <div className="detail-item">
-            <label>Datum & Zeit:</label>
-            <span>{new Date(receipt.dDatum).toLocaleDateString('de-DE')} um {receipt.tUhrzeit || 'N/A'}</span>
+// NEU: ERWEITERTE DETAILS-MODAL KOMPONENTE MIT DOKUMENTEN
+const ReceiptDetailsModal = ({ receipt, onClose }) => {
+  const [documentCount, setDocumentCount] = useState(0);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title-section">
+            <h3>Warenannahme WA-{receipt.kWarenannahme}</h3>
+            {documentCount > 0 && (
+              <span className="document-counter-badge">
+                📄 {documentCount} Dokument{documentCount !== 1 ? 'e' : ''}
+              </span>
+            )}
           </div>
-          
-          <div className="detail-item">
-            <label>Transporteur:</label>
-            <span>{receipt.cTransporteur || 'Nicht angegeben'}</span>
-          </div>
-          
-          <div className="detail-item">
-            <label>Packstücke:</label>
-            <span>{receipt.nAnzahlPackstuecke}x {receipt.cPackstueckArt}</span>
-          </div>
-          
-          <div className="detail-item">
-            <label>Zustand:</label>
-            <span className={`zustand-badge ${receipt.cZustand === 'In Ordnung' ? 'gut' : 'beschaedigt'}`}>
-              {receipt.cZustand}
-            </span>
-          </div>
-          
-          <div className="detail-item">
-            <label>Status:</label>
-            <span className={`status-badge ${receipt.cStatus.toLowerCase().replace(' ', '-')}`}>
-              {receipt.cStatus}
-            </span>
-          </div>
-          
-          <div className="detail-item">
-            <label>JTL-Bestellnummer:</label>
-            <span>{receipt.cJTLLieferantenbestellnummer || 'Nicht angegeben'}</span>
-          </div>
-          
-          <div className="detail-item">
-            <label>Palettentausch:</label>
-            <span>{receipt.bPalettentausch ? 'Ja' : 'Nein'}</span>
-          </div>
-          
-          {receipt.cAnmerkung && (
-            <div className="detail-item full-width">
-              <label>Anmerkung:</label>
-              <span>{receipt.cAnmerkung}</span>
-            </div>
-          )}
-          
-          {receipt.MitarbeiterName && (
-            <div className="detail-item">
-              <label>Erfasst von:</label>
-              <span>{receipt.MitarbeiterName}</span>
-            </div>
-          )}
-          
-          <div className="detail-item">
-            <label>Erstellt:</label>
-            <span>{new Date(receipt.dErstellt).toLocaleString('de-DE')}</span>
-          </div>
+          <button className="modal-close" onClick={onClose}>
+            <X size={24} />
+          </button>
         </div>
         
-        {receipt.cFotoPath && (
-          <div className="photo-section">
-            <h4>Foto der Lieferung</h4>
-            <img 
-              src={(() => {
-                const cleanPath = receipt.cFotoPath.replace(/\\/g, '/');
-                const finalUrl = cleanPath.startsWith('uploads/') 
-                  ? `http://localhost:5000/${cleanPath}`
-                  : `http://localhost:5000/uploads/warenannahme/${cleanPath}`;
-                console.log('🖼️ Details Modal Foto-URL:', finalUrl);
-                return finalUrl;
-              })()}
-              alt="Warenannahme Foto" 
-              className="receipt-photo"
-              onError={(e) => {
-                console.error('❌ Details Modal Foto-Fehler');
-                e.target.style.display = 'none';
-              }}
+        <div className="modal-body">
+          {/* Bestehende Detail-Grid */}
+          <div className="detail-grid">
+            <div className="detail-item">
+              <label>Datum & Zeit:</label>
+              <span>{new Date(receipt.dDatum).toLocaleDateString('de-DE')} um {receipt.tUhrzeit || 'N/A'}</span>
+            </div>
+            
+            <div className="detail-item">
+              <label>Transporteur:</label>
+              <span>{receipt.cTransporteur || 'Nicht angegeben'}</span>
+            </div>
+            
+            <div className="detail-item">
+              <label>Packstücke:</label>
+              <span>{receipt.nAnzahlPackstuecke}x {receipt.cPackstueckArt}</span>
+            </div>
+            
+            <div className="detail-item">
+              <label>Zustand:</label>
+              <span className={`zustand-badge ${receipt.cZustand === 'In Ordnung' ? 'gut' : 'beschaedigt'}`}>
+                {receipt.cZustand}
+              </span>
+            </div>
+            
+            <div className="detail-item">
+              <label>Status:</label>
+              <span className={`status-badge ${receipt.cStatus.toLowerCase().replace(' ', '-')}`}>
+                {receipt.cStatus}
+              </span>
+            </div>
+            
+            <div className="detail-item">
+              <label>JTL-Bestellnummer:</label>
+              <span>{receipt.cJTLLieferantenbestellnummer || 'Nicht angegeben'}</span>
+            </div>
+            
+            <div className="detail-item">
+              <label>Palettentausch:</label>
+              <span>{receipt.bPalettentausch ? 'Ja' : 'Nein'}</span>
+            </div>
+            
+            {receipt.cAnmerkung && (
+              <div className="detail-item full-width">
+                <label>Anmerkung:</label>
+                <span>{receipt.cAnmerkung}</span>
+              </div>
+            )}
+            
+            {receipt.MitarbeiterName && (
+              <div className="detail-item">
+                <label>Erfasst von:</label>
+                <span>{receipt.MitarbeiterName}</span>
+              </div>
+            )}
+            
+            <div className="detail-item">
+              <label>Erstellt:</label>
+              <span>{new Date(receipt.dErstellt).toLocaleString('de-DE')}</span>
+            </div>
+          </div>
+          
+          {/* NEU: Dokumente-Sektion */}
+          <div className="documents-section">
+            <h4>📄 Lieferscheine & Dokumente</h4>
+            <DocumentsDisplay
+              warenannahmeId={receipt.kWarenannahme}
+              userRole="customer"
+              onDocumentCountChange={setDocumentCount}
+              onUploadClick={null} // Kunden können nicht uploaden
             />
           </div>
-        )}
+          
+          {/* Bestehende Foto-Sektion */}
+          {receipt.cFotoPath && (
+            <div className="photo-section">
+              <h4>Foto der Lieferung</h4>
+              <img 
+                src={(() => {
+                  const cleanPath = receipt.cFotoPath.replace(/\\/g, '/');
+                  const finalUrl = cleanPath.startsWith('uploads/') 
+                    ? `http://localhost:5000/${cleanPath}`
+                    : `http://localhost:5000/uploads/warenannahme/${cleanPath}`;
+                  console.log('🖼️ Details Modal Foto-URL:', finalUrl);
+                  return finalUrl;
+                })()}
+                alt="Warenannahme Foto" 
+                className="receipt-photo"
+                onError={(e) => {
+                  console.error('❌ Details Modal Foto-Fehler');
+                  e.target.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default CustomerGoodsReceipts;

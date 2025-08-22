@@ -1,305 +1,378 @@
-/* frontend/src/components/GoodsReceiptDetailsModal.css */
+/* Modern GoodsReceiptDetailsModal.css - DEINE FUNKTIONIERENDE VERSION */
 
-/* === MODAL OVERLAY === */
+/* Modal Overlay - Vollbild mit Blur-Effekt - FORCIERT */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.3s ease-out;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  padding: 20px !important;
+  animation: fadeIn 0.2s ease-out;
+  margin: 0 !important;
+  transform: none !important;
 }
 
-/* === MODAL CONTENT === */
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 800px;
-  max-height: 90vh;
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  animation: slideUp 0.3s ease-out;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.details-modal {
-  max-width: 900px;
+/* Modal Content - Modernes zentriertes Design */
+.modal-content.details-modal {
+  background: white !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  width: 100% !important;
+  max-width: 1100px !important; /* ✅ EINZIGE ÄNDERUNG: War 900px in deiner Version */
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  animation: slideUp 0.3s ease-out !important;
+  margin: auto !important;
+  position: relative !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
 }
 
-/* === MODAL HEADER === */
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal Header - Elegantes Design - VOLLE BREITE */
 .modal-header {
-  background: #f8f9fa;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 16px 16px 0 0;
+  width: 100%; /* ✅ HINZUGEFÜGT: Volle Breite nutzen */
+  box-sizing: border-box; /* ✅ HINZUGEFÜGT: Padding in Breite einbeziehen */
 }
 
 .modal-title {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 20px;
+  flex: 1;
 }
 
 .modal-title h2 {
   margin: 0;
-  font-size: 24px;
-  color: #333;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .status-badge-large {
-  padding: 6px 16px;
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.2);
   color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
   font-size: 14px;
-  font-weight: 500;
-  text-transform: uppercase;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  margin-left: auto;
+  margin-right: 20px;
 }
 
+/* Modal Actions */
 .modal-actions {
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 12px;
 }
 
-/* === MODAL BODY === */
-.modal-body {
-  padding: 24px;
-  overflow-y: auto;
-  max-height: calc(90vh - 80px);
-}
-
-/* === LOADING & ERROR === */
-.loading-container, .error-container {
-  padding: 60px 20px;
-  text-align: center;
-}
-
-.loading-spinner {
-  font-size: 48px;
-  animation: spin 1s linear infinite;
-}
-
-.error-message {
-  color: #d32f2f;
-  font-size: 16px;
-  margin-bottom: 20px;
-}
-
-/* === DETAILS SECTIONS === */
-.details-section {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.details-section h3 {
-  margin: 0 0 16px 0;
-  font-size: 18px;
-  color: #333;
-  font-weight: 600;
-}
-
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-}
-
-.detail-item {
+.edit-button, .save-button, .cancel-button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 0;
-}
-
-.detail-item.full-width {
-  grid-column: 1 / -1;
-}
-
-.detail-item .label {
+  padding: 10px 16px;
+  border-radius: 8px;
   font-weight: 600;
-  color: #666;
-  min-width: 120px;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
 }
 
-.detail-item .value {
-  color: #333;
+.edit-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.edit-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.save-button {
+  background: #10b981;
+  color: white;
+}
+
+.save-button:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.cancel-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.cancel-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.close-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+/* Modal Body - Zurück zum Original */
+.modal-body {
+  padding: 32px;
+  overflow-y: auto;
   flex: 1;
+  background: #f8fafc;
+}
+
+/* Details Sections - Moderne Karten - PADDING KORRIGIERT */
+.details-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px; /* ✅ ZURÜCK ZUM ORIGINAL: War 24px 32px - jetzt wieder gleichmäßig */
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  width: 100%; /* ✅ BEHALTEN: Volle Breite nutzen */
+  max-width: none; /* ✅ BEHALTEN: Keine Breitenbegrenzung */
+}
+
+.details-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.details-section h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* Details Grid - FESTE Spalten für einheitliche Ausrichtung */
+.details-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important; /* ✅ GEÄNDERT: Feste 4 Spalten statt auto-fit */
+  gap: 18px !important;
+  margin-bottom: 20px !important;
+  width: 100% !important;
+  align-items: start !important;
+}
+
+/* JEDE einzelne Information als Kachel */
+.detail-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 8px !important;
+  padding: 16px 12px !important;
+  background: #f8fafc !important;
+  border-radius: 10px !important;
+  border: 1px solid #e2e8f0 !important;
+  transition: all 0.2s ease !important;
+  min-height: 85px !important;
+  justify-content: center !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.detail-item:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Label (Datum:, Uhrzeit:, etc.) */
+.detail-item .label {
+  font-weight: 600 !important;
+  color: #475569 !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.8px !important;
+  margin-bottom: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+/* Wert (15.8.2025, 18:15, etc.) */
+.detail-item .value {
+  color: #1e293b !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+}
+
+/* Icons in Labels */
+.detail-item .label svg {
+  color: #667eea !important;
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Spezielle Behandlung für Anmerkungen */
+.detail-item.full-width {
+  grid-column: 1 / -1 !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  min-height: auto !important;
+  padding: 20px !important;
+}
+
+.detail-item.full-width .label {
+  font-size: 12px !important;
+  color: #475569 !important;
+  margin-bottom: 8px !important;
+}
+
+.detail-item.full-width .value {
+  text-align: left !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
 }
 
 .anmerkung-text {
   background: white;
   padding: 12px;
-  border-radius: 4px;
-  border: 1px solid #e0e0e0;
-  white-space: pre-wrap;
-  margin-top: 8px;
-}
-
-/* === EDIT MODE === */
-.edit-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: border-color 0.3s;
-}
-
-.edit-input:focus {
-  outline: none;
-  border-color: #1976d2;
-}
-
-.edit-select {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-}
-
-.edit-textarea {
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-  resize: vertical;
   margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* Form Elements - Moderne Inputs */
+.edit-input, .edit-select, .edit-textarea {
+  padding: 10px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: white;
+  min-width: 200px;
+}
+
+.edit-input:focus, .edit-select:focus, .edit-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .edit-checkbox {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: #667eea;
 }
 
-/* === BUTTONS === */
-.edit-button, .save-button, .cancel-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.edit-button {
-  background: #1976d2;
-  color: white;
-}
-
-.edit-button:hover {
-  background: #1565c0;
-}
-
-.save-button {
-  background: #4caf50;
-  color: white;
-}
-
-.save-button:hover:not(:disabled) {
-  background: #45a049;
-}
-
-.save-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.cancel-button {
-  background: #f44336;
-  color: white;
-}
-
-.cancel-button:hover {
-  background: #da190b;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  padding: 8px;
-  cursor: pointer;
-  color: #666;
-  border-radius: 4px;
-  transition: all 0.3s;
-}
-
-.close-button:hover {
-  background: #e0e0e0;
-  color: #333;
-}
-
-.edit-actions {
-  display: flex;
-  gap: 10px;
-}
-
-/* === PHOTO SECTION === */
+/* Photo Section */
 .photo-section {
-  text-align: center;
-  padding: 20px;
+  display: flex;
+  justify-content: center;
 }
 
 .photo-preview-button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  background: #1976d2;
+  gap: 12px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  font-weight: 500;
+  border-radius: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .photo-preview-button:hover {
-  background: #1565c0;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 12px -1px rgba(0, 0, 0, 0.15);
 }
 
-/* === STATUS BUTTONS === */
+/* Status Buttons - FORCIERT nebeneinander */
 .status-buttons {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px; /* ✅ REDUZIERT: War 12px */
+  flex-wrap: nowrap; /* ✅ GEÄNDERT: War wrap - verhindert Umbruch */
+  justify-content: center; /* ✅ HINZUGEFÜGT: Zentriert */
 }
 
 .status-button {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border: 2px solid;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: 6px; /* ✅ REDUZIERT: War 8px */
+  padding: 10px 16px; /* ✅ REDUZIERT: War 12px 20px */
+  border-radius: 25px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
-  background: transparent;
+  transition: all 0.2s ease;
+  border: 2px solid;
+  background: white;
+  font-size: 13px; /* ✅ REDUZIERT: War 14px */
+  min-width: 130px; /* ✅ REDUZIERT: War ohne min-width */
+  justify-content: center;
+  flex-shrink: 0; /* ✅ HINZUGEFÜGT: Verhindert Schrumpfen */
 }
 
-.status-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.status-button:not(.active):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .status-button:disabled {
@@ -307,41 +380,255 @@
   opacity: 0.6;
 }
 
-.status-button.active {
-  cursor: default;
+/* Loading States */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #64748b;
 }
 
-/* === ANIMATIONS === */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+.loading-spinner {
+  font-size: 32px;
+  margin-bottom: 16px;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* === RESPONSIVE === */
+/* Error States */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  text-align: center;
+}
+
+.error-message {
+  color: #ef4444;
+  font-weight: 600;
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+/* Edit Actions */
+.edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Documents Section Styling - EINFACHE, funktionierende Version */
+
+/* Verstecke doppelte "Dokumente" Titel */
+.details-section .details-section h3,
+.details-section .details-section h2, 
+.details-section .details-section h4,
+.details-section h4,
+.details-section > div h3,
+.details-section > div h4,
+.details-section > div > div h3,
+.details-section > div > div h4 {
+  display: none !important;
+}
+
+/* DocumentsDisplay Container - Transparent */
+.details-section > div:last-child,
+.details-section > div:last-child > div {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+/* Upload Button */
+.details-section button[class*="upload"],
+.details-section button[class*="bg-blue"] {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  padding: 12px 24px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 auto 20px auto !important;
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3) !important;
+  font-size: 13px !important;
+  min-width: 160px !important;
+  justify-content: center !important;
+}
+
+.details-section button[class*="upload"]:hover,
+.details-section button[class*="bg-blue"]:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 5px 14px rgba(102, 126, 234, 0.4) !important;
+}
+
+/* Dokument-Liste Container */
+.details-section div[class*="space-y"] {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  margin-top: 16px !important;
+}
+
+/* Einzelne Dokument-Items - OHNE BLAUEN EFFEKT */
+.details-section div[class*="space-y"] > div {
+  background: white !important;
+  border-radius: 10px !important;
+  padding: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease !important;
+}
+
+.details-section div[class*="space-y"] > div:hover {
+  border-color: #cbd5e1 !important; /* ✅ GEÄNDERT: War #667eea (blau) - jetzt grau */
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1) !important; /* ✅ GEÄNDERT: Weniger blau-lastig */
+  transform: translateY(-1px) !important;
+}
+
+/* ✅ ENTFERNT: Erste Dokument hervorheben - kein blauer border-left mehr */
+
+/* Alle Titel verstecken */
+.details-section div[class*="space-y"] h4,
+.details-section div[class*="space-y"] h3,
+.details-section div[class*="space-y"] h2 {
+  display: none !important;
+}
+
+/* Dokument-Text - Minimal verbessern */
+.details-section div[class*="space-y"] p {
+  margin: 0 0 8px 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Erster P-Tag: Dateiname */
+.details-section div[class*="space-y"] p:first-of-type {
+  background: #f8fafc !important;
+  padding: 10px 12px !important;
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  margin-bottom: 10px !important;
+  word-break: break-word !important;
+}
+
+/* Zweiter P-Tag: Meta-Info */
+.details-section div[class*="space-y"] p:nth-of-type(2) {
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  margin-bottom: 12px !important;
+  line-height: 1.5 !important;
+}
+
+/* Action-Buttons Container - DIREKTE Lösung */
+.details-section div[class*="space-y"] div[class*="flex"] {
+  display: grid !important; /* ✅ GEÄNDERT: Von flex zu grid */
+  grid-template-columns: 1fr 1fr 1fr !important; /* ✅ HINZUGEFÜGT: 3 gleiche Spalten */
+  gap: 12px !important;
+  margin-top: 12px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid #f1f5f9 !important;
+  width: 100% !important; /* ✅ HINZUGEFÜGT: Volle Breite nutzen */
+}
+
+/* Action-Buttons - GRID-optimiert */
+.details-section div[class*="space-y"] button {
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  text-transform: none !important;
+  justify-content: center !important;
+  height: 32px !important;
+  width: 100% !important; /* ✅ HINZUGEFÜGT: Button füllt Grid-Zelle */
+  max-width: 120px !important; /* ✅ HINZUGEFÜGT: Begrenzt die Breite */
+  margin: 0 auto !important; /* ✅ HINZUGEFÜGT: Zentriert in Grid-Zelle */
+}
+
+/* Öffnen Button */
+.details-section div[class*="space-y"] button:nth-of-type(1) {
+  background: #3b82f6 !important;
+  color: white !important;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3) !important;
+}
+
+.details-section div[class*="space-y"] button:nth-of-type(1):hover {
+  background: #2563eb !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Download Button */
+.details-section div[class*="space-y"] button:nth-of-type(2) {
+  background: #10b981 !important;
+  color: white !important;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3) !important;
+}
+
+.details-section div[class*="space-y"] button:nth-of-type(2):hover {
+  background: #059669 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Löschen Button */
+.details-section div[class*="space-y"] button:nth-of-type(3) {
+  background: #ef4444 !important;
+  color: white !important;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.3) !important;
+}
+
+.details-section div[class*="space-y"] button:nth-of-type(3):hover {
+  background: #dc2626 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Loading State für Buttons */
+.details-section button:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* Keine Dokumente State */
+.details-section div:empty::after {
+  content: "📄 Noch keine Dokumente hochgeladen" !important;
+  display: block !important;
+  text-align: center !important;
+  color: #64748b !important;
+  font-style: italic !important;
+  padding: 30px 20px !important;
+  background: #f8fafc !important;
+  border-radius: 10px !important;
+  border: 2px dashed #cbd5e1 !important;
+  margin-top: 16px !important;
+  font-size: 14px !important;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .modal-content {
     width: 95%;
@@ -395,4 +682,23 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Scroll-Verbesserungen */
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

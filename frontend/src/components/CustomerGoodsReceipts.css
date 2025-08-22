@@ -419,3 +419,49 @@
     grid-template-columns: 1fr;
   }
 }
+
+.documents-count-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.no-documents {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.document-counter-badge {
+  background: #e8f5e8;
+  color: #2e7d32;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-left: 12px;
+}
+
+.modal-title-section {
+  display: flex;
+  align-items: center;
+}
+
+.large-modal {
+  max-width: 900px;
+  width: 90%;
+}
+
+.documents-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.documents-section h4 {
+  margin-bottom: 16px;
+  color: #333;
+  font-size: 1.1rem;
+}

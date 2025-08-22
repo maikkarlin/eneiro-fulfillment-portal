@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.js - NUR FOTO-ANZEIGE REPARIERT
+// frontend/src/components/Dashboard.js - MIT DOKUMENT-FEATURES ERWEITERT
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
@@ -28,6 +28,7 @@ import GoodsReceiptForm from './GoodsReceiptForm';
 import GoodsReceiptDetailsModal from './GoodsReceiptDetailsModal';
 import GoodsReceiptLabel from './GoodsReceiptLabel';
 import CustomerGoodsReceipts from './CustomerGoodsReceipts';
+import DocumentsDisplay from './DocumentsDisplay'; // ✅ NEU: Import DocumentsDisplay
 import Blocklager from './Blocklager';
 import ItemizedRecords from './ItemizedRecords';
 import './Dashboard.css';
@@ -252,17 +253,17 @@ const Dashboard = ({ user, onLogout }) => {
         />
       )}
       
-{selectedGoodsReceipt && (
-  <GoodsReceiptDetailsModal
-    goodsReceiptId={selectedGoodsReceipt.kWarenannahme}  // ✅ Nur die ID
-    onClose={() => setSelectedGoodsReceipt(null)}
-    onUpdate={() => {                                     // ✅ onUpdate statt onSave
-      setSelectedGoodsReceipt(null);
-      loadDashboardData();
-    }}
-    onPhotoClick={setPhotoModal}                         // ✅ Foto-Handler hinzufügen
-  />
-)}
+      {selectedGoodsReceipt && (
+        <GoodsReceiptDetailsModal
+          goodsReceiptId={selectedGoodsReceipt.kWarenannahme}
+          onClose={() => setSelectedGoodsReceipt(null)}
+          onUpdate={() => {
+            setSelectedGoodsReceipt(null);
+            loadDashboardData();
+          }}
+          onPhotoClick={setPhotoModal}
+        />
+      )}
       
       {labelPrintData && (
         <GoodsReceiptLabel
@@ -432,11 +433,54 @@ const EmployeeOverview = ({ data, onRefresh }) => (
   </div>
 );
 
-// Warenannahmen-Liste
+// ✅ ERWEITERTE Warenannahmen-Liste MIT DOKUMENT-FEATURES
 const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLabelPrint }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('alle');
   const [filteredData, setFilteredData] = useState([]);
+  const [documentCounts, setDocumentCounts] = useState({}); // ✅ NEU: State für Dokument-Anzahlen
+
+  // ✅ NEU: Funktion zum Laden der Dokument-Anzahl für eine Warenannahme
+  const loadDocumentCount = async (warenannahmeId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/documents/warenannahme/${warenannahmeId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return Array.isArray(data) ? data.length : 0;
+      }
+      return 0;
+    } catch (error) {
+      console.error('❌ Fehler beim Laden der Dokument-Anzahl:', error);
+      return 0;
+    }
+  };
+
+  // ✅ NEU: Effect zum Laden aller Dokument-Anzahlen
+  useEffect(() => {
+    const loadAllDocumentCounts = async () => {
+      if (!data.list || !Array.isArray(data.list)) return;
+      
+      console.log('📊 Lade Dokument-Anzahlen für Mitarbeiter...');
+      const counts = {};
+      
+      for (const item of data.list) {
+        if (item.kWarenannahme) {
+          const count = await loadDocumentCount(item.kWarenannahme);
+          counts[item.kWarenannahme] = count;
+        }
+      }
+      
+      setDocumentCounts(counts);
+      console.log('✅ Dokument-Anzahlen geladen:', counts);
+    };
+    
+    loadAllDocumentCounts();
+  }, [data.list]);
 
   useEffect(() => {
     if (!data.list || !Array.isArray(data.list)) {
@@ -564,61 +608,76 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
                 <th>Transporteur</th>
                 <th>Packstücke</th>
                 <th>Status</th>
+                <th>Dokumente</th> {/* ✅ NEU: Dokumente Spalte */}
                 <th>Foto</th>
                 <th>Aktionen</th>
               </tr>
             </thead>
             <tbody>
-              {filteredData.map((item) => (
-                <tr key={item.kWarenannahme}>
-                  <td style={{ fontWeight: 'bold', color: '#1976d2' }}>
-                    WA-{item.kWarenannahme}
-                  </td>
-                  <td>{new Date(item.dDatum).toLocaleDateString()}</td>
-                  <td>{item.KundenFirma || 'Unbekannt'}</td>
-                  <td>{item.cTransporteur || 'Unbekannt'}</td>
-                  <td>{item.nAnzahlPackstuecke} {item.cPackstueckArt}</td>
-                  <td>
-                    <span className={`status-badge ${item.cStatus.toLowerCase().replace(' ', '-')}`}>
-                      {item.cStatus}
-                    </span>
-                  </td>
-                  <td>
-                    {item.cFotoPath ? (
-                      <button 
-                        onClick={() => {
-                          console.log('🖱️ Foto-Button geklickt, Pfad:', item.cFotoPath);
-                          onPhotoClick(item.cFotoPath);
-                        }}
-                        className="photo-button"
-                        title="Foto anzeigen"
-                      >
-                        <Image size={16} />
-                      </button>
-                    ) : (
-                      <span style={{ color: '#ccc', fontSize: '12px' }}>Kein Foto</span>
-                    )}
-                  </td>
-                  <td>
-  <div style={{ display: 'flex', gap: '8px' }}>
-    <button 
-      onClick={() => onDetailsClick(item)}
-      className="action-button"
-      title="Details anzeigen"
-    >
-      <Eye size={16} />
-    </button>
-    <button 
-      onClick={() => onLabelPrint(item)}
-      className="action-button print-button"
-      title="Etikett drucken"
-    >
-      <Printer size={16} />
-    </button>
-  </div>
-</td>
-                </tr>
-              ))}
+              {filteredData.map((item) => {
+                const docCount = documentCounts[item.kWarenannahme] || 0; // ✅ NEU: Dokument-Anzahl abrufen
+                
+                return (
+                  <tr key={item.kWarenannahme}>
+                    <td style={{ fontWeight: 'bold', color: '#1976d2' }}>
+                      WA-{item.kWarenannahme}
+                    </td>
+                    <td>{new Date(item.dDatum).toLocaleDateString()}</td>
+                    <td>{item.KundenFirma || 'Unbekannt'}</td>
+                    <td>{item.cTransporteur || 'Unbekannt'}</td>
+                    <td>{item.nAnzahlPackstuecke} {item.cPackstueckArt}</td>
+                    <td>
+                      <span className={`status-badge ${item.cStatus.toLowerCase().replace(' ', '-')}`}>
+                        {item.cStatus}
+                      </span>
+                    </td>
+                    {/* ✅ NEU: Dokumente Spalte mit Counter */}
+                    <td>
+                      {docCount > 0 ? (
+                        <span className="documents-count-badge">
+                          📄 {docCount}
+                        </span>
+                      ) : (
+                        <span className="no-documents">Keine</span>
+                      )}
+                    </td>
+                    <td>
+                      {item.cFotoPath ? (
+                        <button 
+                          onClick={() => {
+                            console.log('🖱️ Foto-Button geklickt, Pfad:', item.cFotoPath);
+                            onPhotoClick(item.cFotoPath);
+                          }}
+                          className="photo-button"
+                          title="Foto anzeigen"
+                        >
+                          <Image size={16} />
+                        </button>
+                      ) : (
+                        <span style={{ color: '#ccc', fontSize: '12px' }}>Kein Foto</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => onDetailsClick(item)}
+                          className="action-button"
+                          title="Details anzeigen"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button 
+                          onClick={() => onLabelPrint(item)}
+                          className="action-button print-button"
+                          title="Etikett drucken"
+                        >
+                          <Printer size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -726,6 +785,5 @@ const CustomerOverview = ({ data, onRefresh }) => {
     </div>
   );
 };
-
 
 export default Dashboard;

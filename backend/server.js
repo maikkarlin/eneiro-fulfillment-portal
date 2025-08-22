@@ -78,6 +78,17 @@ try {
   const goodsReceiptRoutes = require('./routes/goodsReceipt');
   const customersRoutes = require('./routes/customers');
   const blocklagerRoutes = require('./routes/blocklager');
+ 
+    // Documents Route nur laden wenn Datei existiert
+  let documentsRoutes = null;
+  try {
+    documentsRoutes = require('./routes/documents');
+    console.log('✅ Documents Route geladen');
+  } catch (err) {
+    console.log('⚠️  Documents Route nicht gefunden, wird übersprungen');
+    console.log('   Erstelle zuerst: backend/routes/documents.js');
+  }
+
 
   // Routes registrieren
   app.use('/api/auth', authRoutes);
@@ -85,11 +96,18 @@ try {
   app.use('/api/goods-receipt', goodsReceiptRoutes);
   app.use('/api/customers', customersRoutes);
   app.use('/api/blocklager', blocklagerRoutes);
+ 
+  // Documents Route nur registrieren wenn geladen
+  if (documentsRoutes) {
+    app.use('/api/documents', documentsRoutes);
+    console.log('✅ Documents Route registriert');
+  }
   
-  console.log('✅ Alle Routes erfolgreich registriert');
+  console.log('✅ Alle verfügbaren Routes registriert');
 } catch (error) {
   console.error('❌ Fehler beim Laden der Routes:', error);
 }
+ 
 
 // Debug Route für Upload-Dateien
 app.get('/api/uploads/test', (req, res) => {
@@ -158,7 +176,8 @@ app.use((error, req, res, next) => {
 function createUploadDirectories() {
   const directories = [
     'uploads',
-    'uploads/warenannahme'
+    'uploads/warenannahme',
+    'uploads/documents'
   ];
   
   directories.forEach(dir => {
