@@ -18,11 +18,11 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Konfiguration
-APP_NAME="fulfillment-portal"
+APP_NAME="eneiro-fulfillment-portal"
 APP_USER="fulfillment"
 APP_HOME="/home/$APP_USER"
 APP_DIR="$APP_HOME/$APP_NAME"
-GITHUB_REPO="https://github.com/DEIN_USERNAME/$APP_NAME.git"  # ANPASSEN!
+GITHUB_REPO="https://github.com/maikkarlin/$APP_NAME.git"  # ANPASSEN!
 NODE_VERSION="20"  # LTS Version
 
 echo -e "${BLUE}=======================================================${NC}"
