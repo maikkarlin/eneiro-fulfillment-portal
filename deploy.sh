@@ -5,7 +5,7 @@
 # =======================================================
 # Ubuntu 24.04 LTS - Sichere Installation mit eigenem User
 # Author: Claude & User Collaboration
-# Version: 2.0 (August 2025)
+# Version: 2.1 (August 2025) - PM2 FIX
 # =======================================================
 
 set -e  # Exit on error
@@ -40,15 +40,23 @@ echo -e "${YELLOW}📋 Installiere System Dependencies...${NC}"
 # System Update
 apt update && apt upgrade -y
 
+# Basis-Pakete installieren (OHNE pm2!)
+apt install -y git curl wget unzip nginx-light ufw build-essential
+
 # Node.js installieren (falls nicht vorhanden)
 if ! command -v node &> /dev/null; then
     echo -e "${YELLOW}📦 Installiere Node.js $NODE_VERSION...${NC}"
     curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
     apt-get install -y nodejs
+    echo -e "${GREEN}✅ Node.js $(node --version) installiert${NC}"
+else
+    echo -e "${BLUE}ℹ️  Node.js bereits installiert: $(node --version)${NC}"
 fi
 
-# Weitere Dependencies
-apt install -y git curl wget unzip nginx-light pm2 ufw
+# PM2 über npm installieren (NACH Node.js!)
+echo -e "${YELLOW}📦 Installiere PM2 über npm...${NC}"
+npm install -g pm2
+echo -e "${GREEN}✅ PM2 $(pm2 --version) installiert${NC}"
 
 echo -e "${GREEN}✅ System Dependencies installiert${NC}"
 
@@ -65,9 +73,6 @@ if ! id "$APP_USER" &>/dev/null; then
 else
     echo -e "${BLUE}ℹ️  User '$APP_USER' existiert bereits${NC}"
 fi
-
-# PM2 global für App-User installieren
-sudo -u "$APP_USER" bash -c "npm install -g pm2"
 
 echo -e "${GREEN}✅ App-User konfiguriert${NC}"
 
@@ -135,7 +140,7 @@ DB_ENCRYPT=true
 DB_TRUST_SERVER_CERTIFICATE=true
 
 # JWT Secret (Sicher generieren!)
-JWT_SECRET=dein_super_sicherer_jwt_secret_hier
+JWT_SECRET=dein_super_sicherer_jwt_secret_hier_mindestens_32_zeichen
 
 # Server Konfiguration
 PORT=3001
@@ -203,12 +208,20 @@ module.exports = {
 }
 EOL
 
-# PM2 starten/neustarten
+# PM2 starten/neustarten (als App-User)
 echo -e "${BLUE}🔄 Starte Backend mit PM2...${NC}"
-sudo -u "$APP_USER" pm2 delete fulfillment-backend 2>/dev/null || true
-sudo -u "$APP_USER" pm2 start ecosystem.config.js
-sudo -u "$APP_USER" pm2 save
-sudo -u "$APP_USER" pm2 startup
+sudo -u "$APP_USER" bash -c "
+cd $APP_DIR
+pm2 delete fulfillment-backend 2>/dev/null || true
+pm2 start ecosystem.config.js
+pm2 save
+"
+
+# PM2 Startup für automatischen Start
+echo -e "${BLUE}⚡ Konfiguriere PM2 Auto-Start...${NC}"
+# Als root das startup template generieren
+STARTUP_SCRIPT=$(sudo -u "$APP_USER" pm2 startup systemd -u "$APP_USER" --hp "$APP_HOME" | tail -1)
+eval "$STARTUP_SCRIPT"
 
 echo -e "${GREEN}✅ PM2 konfiguriert und gestartet${NC}"
 
@@ -267,7 +280,7 @@ echo -e "${GREEN}✅ Firewall konfiguriert${NC}"
 
 echo -e "${YELLOW}📊 Prüfe Installation...${NC}"
 
-sleep 3
+sleep 5
 
 # PM2 Status
 echo -e "${BLUE}PM2 Status:${NC}"
@@ -279,11 +292,18 @@ if netstat -tlnp | grep :3001 > /dev/null; then
     echo -e "${GREEN}✅ Backend läuft auf Port 3001${NC}"
 else
     echo -e "${RED}❌ Backend läuft NICHT auf Port 3001${NC}"
+    echo -e "${YELLOW}💡 Logs prüfen: sudo -u $APP_USER pm2 logs${NC}"
 fi
 
 # Disk Space Check
 echo -e "${BLUE}Disk Space:${NC}"
 df -h "$APP_DIR"
+
+# Node.js & npm Versionen
+echo -e "${BLUE}Installed Versions:${NC}"
+echo "Node.js: $(node --version)"
+echo "npm: $(npm --version)"
+echo "PM2: $(pm2 --version)"
 
 # =======================================================
 # 🎉 ABSCHLUSS
