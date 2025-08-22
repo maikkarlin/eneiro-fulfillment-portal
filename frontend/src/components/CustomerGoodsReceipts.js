@@ -1,4 +1,4 @@
-// frontend/src/components/CustomerGoodsReceipts.js - KOMPLETT MIT DOKUMENT-INTEGRATION
+// frontend/src/components/CustomerGoodsReceipts.js - DEIN ORIGINALER CODE + NUR CSS-KLASSEN
 import React, { useState, useEffect } from 'react';
 import { 
   Package, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { goodsReceiptAPI } from '../services/api';
 import './CustomerGoodsReceipts.css';
+import './GoodsReceiptDetailsModal.css'; // Das moderne CSS
 import DocumentsDisplay from './DocumentsDisplay';
 
 const CustomerGoodsReceipts = () => {
@@ -423,16 +424,18 @@ const PhotoModal = ({ photoPath, onClose }) => {
   );
 };
 
-// NEU: ERWEITERTE DETAILS-MODAL KOMPONENTE MIT DOKUMENTEN
+// ===== DEINE ORIGINALE DETAILS-MODAL NUR MIT SCHÖNEN CSS-KLASSEN =====
 const ReceiptDetailsModal = ({ receipt, onClose }) => {
   const [documentCount, setDocumentCount] = useState(0);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content details-modal" onClick={(e) => e.stopPropagation()}>
+        
+        {/* Header - NUR CSS-KLASSEN GEÄNDERT */}
         <div className="modal-header">
-          <div className="modal-title-section">
-            <h3>Warenannahme WA-{receipt.kWarenannahme}</h3>
+          <div className="modal-title">
+            <h2>Warenannahme #{receipt.kWarenannahme}</h2>
             {documentCount > 0 && (
               <span className="document-counter-badge">
                 📄 {documentCount} Dokument{documentCount !== 1 ? 'e' : ''}
@@ -445,70 +448,76 @@ const ReceiptDetailsModal = ({ receipt, onClose }) => {
         </div>
         
         <div className="modal-body">
-          {/* Bestehende Detail-Grid */}
-          <div className="detail-grid">
-            <div className="detail-item">
-              <label>Datum & Zeit:</label>
-              <span>{new Date(receipt.dDatum).toLocaleDateString('de-DE')} um {receipt.tUhrzeit || 'N/A'}</span>
-            </div>
-            
-            <div className="detail-item">
-              <label>Transporteur:</label>
-              <span>{receipt.cTransporteur || 'Nicht angegeben'}</span>
-            </div>
-            
-            <div className="detail-item">
-              <label>Packstücke:</label>
-              <span>{receipt.nAnzahlPackstuecke}x {receipt.cPackstueckArt}</span>
-            </div>
-            
-            <div className="detail-item">
-              <label>Zustand:</label>
-              <span className={`zustand-badge ${receipt.cZustand === 'In Ordnung' ? 'gut' : 'beschaedigt'}`}>
-                {receipt.cZustand}
-              </span>
-            </div>
-            
-            <div className="detail-item">
-              <label>Status:</label>
-              <span className={`status-badge ${receipt.cStatus.toLowerCase().replace(' ', '-')}`}>
-                {receipt.cStatus}
-              </span>
-            </div>
-            
-            <div className="detail-item">
-              <label>JTL-Bestellnummer:</label>
-              <span>{receipt.cJTLLieferantenbestellnummer || 'Nicht angegeben'}</span>
-            </div>
-            
-            <div className="detail-item">
-              <label>Palettentausch:</label>
-              <span>{receipt.bPalettentausch ? 'Ja' : 'Nein'}</span>
-            </div>
-            
-            {receipt.cAnmerkung && (
-              <div className="detail-item full-width">
-                <label>Anmerkung:</label>
-                <span>{receipt.cAnmerkung}</span>
-              </div>
-            )}
-            
-            {receipt.MitarbeiterName && (
+          
+          {/* Bestehende Detail-Grid - NUR CSS-KLASSEN GEÄNDERT */}
+          <div className="details-section" style={{ marginTop: '0px' }}>
+            <h3 style={{ marginTop: '0px' }}>📋 Basis-Informationen</h3>
+            <div className="details-grid">
+              
               <div className="detail-item">
-                <label>Erfasst von:</label>
-                <span>{receipt.MitarbeiterName}</span>
+                <span className="label">Datum & Zeit:</span>
+                <span className="value">{new Date(receipt.dDatum).toLocaleDateString('de-DE')} um {receipt.tUhrzeit || 'N/A'}</span>
               </div>
-            )}
-            
-            <div className="detail-item">
-              <label>Erstellt:</label>
-              <span>{new Date(receipt.dErstellt).toLocaleString('de-DE')}</span>
+              
+              <div className="detail-item">
+                <span className="label">Transporteur:</span>
+                <span className="value">{receipt.cTransporteur || 'Nicht angegeben'}</span>
+              </div>
+              
+              <div className="detail-item">
+                <span className="label">Packstücke:</span>
+                <span className="value">{receipt.nAnzahlPackstuecke}x {receipt.cPackstueckArt}</span>
+              </div>
+              
+              <div className="detail-item">
+                <span className="label">Zustand:</span>
+                <span className={`value zustand-badge ${receipt.cZustand === 'In Ordnung' ? 'gut' : 'beschaedigt'}`}>
+                  {receipt.cZustand}
+                </span>
+              </div>
+              
+              <div className="detail-item">
+                <span className="label">Status:</span>
+                <span className={`value status-badge ${receipt.cStatus.toLowerCase().replace(' ', '-')}`}>
+                  {receipt.cStatus}
+                </span>
+              </div>
+              
+              <div className="detail-item">
+                <span className="label">JTL-Bestellnummer:</span>
+                <span className="value">{receipt.cJTLLieferantenbestellnummer || 'Nicht angegeben'}</span>
+              </div>
+              
+              <div className="detail-item">
+                <span className="label">Palettentausch:</span>
+                <span className="value">{receipt.bPalettentausch ? 'Ja' : 'Nein'}</span>
+              </div>
+              
+              {receipt.cAnmerkung && (
+                <div className="detail-item full-width">
+                  <span className="label">Anmerkung:</span>
+                  <span className="value">{receipt.cAnmerkung}</span>
+                </div>
+              )}
+              
+              {receipt.MitarbeiterName && (
+                <div className="detail-item">
+                  <span className="label">Erfasst von:</span>
+                  <span className="value">{receipt.MitarbeiterName}</span>
+                </div>
+              )}
+              
+              <div className="detail-item">
+                <span className="label">Erstellt:</span>
+                <span className="value">{new Date(receipt.dErstellt).toLocaleString('de-DE')}</span>
+              </div>
+              
             </div>
           </div>
-          
+
           {/* NEU: Dokumente-Sektion */}
-          <div className="documents-section">
-            <h4>📄 Lieferscheine & Dokumente</h4>
+          <div className="details-section">
+            <h3>📄 Lieferscheine & Dokumente</h3>
             <DocumentsDisplay
               warenannahmeId={receipt.kWarenannahme}
               userRole="customer"
@@ -519,24 +528,28 @@ const ReceiptDetailsModal = ({ receipt, onClose }) => {
           
           {/* Bestehende Foto-Sektion */}
           {receipt.cFotoPath && (
-            <div className="photo-section">
-              <h4>Foto der Lieferung</h4>
-              <img 
-                src={(() => {
-                  const cleanPath = receipt.cFotoPath.replace(/\\/g, '/');
-                  const finalUrl = cleanPath.startsWith('uploads/') 
-                    ? `http://localhost:5000/${cleanPath}`
-                    : `http://localhost:5000/uploads/warenannahme/${cleanPath}`;
-                  console.log('🖼️ Details Modal Foto-URL:', finalUrl);
-                  return finalUrl;
-                })()}
-                alt="Warenannahme Foto" 
-                className="receipt-photo"
-                onError={(e) => {
-                  console.error('❌ Details Modal Foto-Fehler');
-                  e.target.style.display = 'none';
-                }}
-              />
+            <div className="details-section">
+              <h3>📷 Foto der Lieferung</h3>
+              <div className="photo-section">
+                <img 
+                  src={(() => {
+                    const cleanPath = receipt.cFotoPath.replace(/\\/g, '/');
+                    const finalUrl = cleanPath.startsWith('uploads/') 
+                      ? `http://localhost:5000/${cleanPath}`
+                      : `http://localhost:5000/uploads/warenannahme/${cleanPath}`;
+                    console.log('🖼️ Details Modal Foto-URL:', finalUrl);
+                    return finalUrl;
+                  })()}
+                  alt="Warenannahme Foto" 
+                  className="receipt-photo"
+                  style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }}
+                  onError={(e) => {
+                    console.error('❌ Details Modal Foto-Fehler');
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML += '<p>❌ Foto konnte nicht geladen werden</p>';
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>

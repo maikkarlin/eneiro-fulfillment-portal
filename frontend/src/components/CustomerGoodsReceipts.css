@@ -299,7 +299,8 @@
   max-height: 80vh;
 }
 
-/* Details Modal */
+/*
+
 .details-modal {
   position: fixed;
   top: 0;
@@ -314,6 +315,8 @@
   padding: 20px;
 }
 
+
+
 .details-modal-content {
   background: white;
   border-radius: 8px;
@@ -323,6 +326,7 @@
   overflow-y: auto;
 }
 
+
 .details-header {
   display: flex;
   justify-content: space-between;
@@ -330,6 +334,7 @@
   padding: 20px;
   border-bottom: 1px solid #e9ecef;
 }
+*/
 
 .details-header h3 {
   margin: 0;
@@ -352,9 +357,11 @@
   color: #333;
 }
 
+/*
 .details-body {
   padding: 20px;
 }
+*/
 
 .details-grid {
   display: grid;
@@ -464,4 +471,195 @@
   margin-bottom: 16px;
   color: #333;
   font-size: 1.1rem;
+}
+
+/* Zustand-Badges */
+.zustand-badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.zustand-badge.in-ordnung {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.zustand-badge.beschaedigt {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Status Badge Large im Header */
+.status-badge-large {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Close Button */
+.modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+/* Photo Section */
+.photo-section {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.photo-preview-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+.photo-preview-button:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(102, 126, 234, 0.4);
+}
+
+/* Documents Info */
+.documents-info {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.documents-count-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.documents-count p {
+  margin: 8px 0 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.no-documents-state {
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 30px 20px;
+  text-align: center;
+}
+
+.no-documents-state p:first-child {
+  margin: 0 0 8px 0;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.no-documents-info {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Anmerkung Text */
+.anmerkung-text {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* Responsive Anpassungen für Kundenportal */
+@media (max-width: 768px) {
+  .modal-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .modal-title h2 {
+    font-size: 18px;
+    margin: 0;
+  }
+  
+  .status-badge-large {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 12px;
+  }
+  
+  .detail-item .label {
+    margin-bottom: 4px;
+  }
+}
+
+/* === DIREKTER FIX FÜR GROSSEN ZWISCHENRAUM === */
+.modal-content.details-modal .modal-body {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.modal-content.details-modal .details-section:first-child {
+  margin-top: 0 !important;
+  padding-top: 24px !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+  padding-bottom: 24px !important;
+}
+
+.modal-content.details-modal .details-section:not(:first-child) {
+  padding: 24px !important;
+  margin-top: 0 !important;
 }
