@@ -1,0 +1,335 @@
+/* ===== MODERNE LIEFERSCHEIN-UPLOAD CSS ===== */
+
+/* Modal Overlay - Schöner Hintergrund */
+.delivery-upload-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: linear-gradient(45deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)) !important;
+  backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+  padding: 20px !important;
+  animation: overlayFadeIn 0.3s ease-out !important;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* Modal Container - SCHÖNE BOX */
+.delivery-upload-modal {
+  background: white !important;
+  border-radius: 20px !important;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  width: 100% !important;
+  max-width: 600px !important;
+  max-height: 90vh !important;
+  overflow: hidden !important;
+  animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  position: relative !important;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header - GRADIENT HEADER */
+.delivery-upload-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  padding: 24px 32px !important;
+  border-radius: 20px 20px 0 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Header Deko-Element */
+.delivery-upload-header::before {
+  content: "" !important;
+  position: absolute !important;
+  top: -50% !important;
+  right: -20% !important;
+  width: 200px !important;
+  height: 200px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 50% !important;
+  z-index: 0 !important;
+}
+
+.delivery-upload-header * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Header Title */
+.delivery-upload-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.delivery-upload-title h3 {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.delivery-upload-title .close-btn {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 10px !important;
+  width: 40px !important;
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 20px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.delivery-upload-title .close-btn:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  transform: rotate(90deg) scale(1.1) !important;
+}
+
+/* Content Area */
+.delivery-upload-content {
+  padding: 32px !important;
+  background: linear-gradient(to bottom, #f8fafc 0%, #ffffff 100%) !important;
+  min-height: 400px !important;
+}
+
+/* Drop Zone - BEREITS GUT, nur kleine Verbesserungen */
+.upload-drop-zone {
+  border: 3px dashed #cbd5e1 !important;
+  border-radius: 16px !important;
+  padding: 40px 30px !important;
+  text-align: center !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+  min-height: 200px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Drag Hover Effekte */
+.upload-drop-zone:hover {
+  border-color: #6366f1 !important;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 
+    0 20px 25px -5px rgba(99, 102, 241, 0.25),
+    0 10px 10px -5px rgba(99, 102, 241, 0.1) !important;
+}
+
+.upload-drop-zone.drag-active {
+  border-color: #3b82f6 !important;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+  transform: scale(1.02) !important;
+  box-shadow: 
+    0 0 40px rgba(59, 130, 246, 0.3),
+    0 20px 25px -5px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* File Selected State */
+.upload-drop-zone.file-selected {
+  border-color: #10b981 !important;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+}
+
+/* Beschreibung Feld - Schöner */
+.description-field {
+  margin-top: 24px !important;
+}
+
+.description-field label {
+  display: block !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  margin-bottom: 8px !important;
+  font-size: 16px !important;
+}
+
+.description-field textarea {
+  width: 100% !important;
+  padding: 16px !important;
+  border: 2px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+  background: white !important;
+  resize: vertical !important;
+  min-height: 100px !important;
+}
+
+.description-field textarea:focus {
+  outline: none !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+  background: #fefefe !important;
+}
+
+/* Error Message - Schöner */
+.error-message {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  border: 1px solid #fca5a5 !important;
+  color: #dc2626 !important;
+  padding: 16px !important;
+  border-radius: 12px !important;
+  margin-top: 16px !important;
+  font-weight: 500 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.error-message::before {
+  content: "⚠️" !important;
+  font-size: 18px !important;
+}
+
+/* Footer - SCHÖNE BUTTONS */
+.delivery-upload-footer {
+  background: linear-gradient(to top, #f1f5f9 0%, #ffffff 100%) !important;
+  padding: 24px 32px !important;
+  border-top: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 16px !important;
+}
+
+.cancel-button {
+  padding: 12px 24px !important;
+  background: #f8fafc !important;
+  color: #64748b !important;
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  transform: translateY(-1px) !important;
+}
+
+.upload-button {
+  padding: 12px 32px !important;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 140px !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3) !important;
+}
+
+.upload-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px 0 rgba(99, 102, 241, 0.4) !important;
+}
+
+.upload-button:disabled {
+  background: #9ca3af !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  width: 20px !important;
+  height: 20px !important;
+  border: 2px solid transparent !important;
+  border-top: 2px solid white !important;
+  border-radius: 50% !important;
+  animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .delivery-upload-modal {
+    margin: 10px !important;
+    max-width: calc(100vw - 20px) !important;
+    border-radius: 16px !important;
+  }
+  
+  .delivery-upload-header {
+    padding: 20px !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+  
+  .delivery-upload-title h3 {
+    font-size: 20px !important;
+  }
+  
+  .delivery-upload-content {
+    padding: 24px !important;
+  }
+  
+  .upload-drop-zone {
+    padding: 30px 20px !important;
+    min-height: 150px !important;
+  }
+  
+  .delivery-upload-footer {
+    padding: 20px !important;
+    flex-direction: column !important;
+  }
+  
+  .cancel-button,
+  .upload-button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
