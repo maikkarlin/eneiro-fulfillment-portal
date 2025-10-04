@@ -1,4 +1,4 @@
-// frontend/src/components/GoodsReceiptDetailsModal.js - NEU
+// frontend/src/components/GoodsReceiptDetailsModal.js - KORRIGIERT
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -18,6 +18,7 @@ import { goodsReceiptAPI } from '../services/api';
 import './GoodsReceiptDetailsModal.css';
 import DocumentsDisplay from './DocumentsDisplay';
 import DeliveryNoteUpload from './DeliveryNoteUpload';
+import PhotoGallery from './PhotoGallery';
 
 const GoodsReceiptDetailsModal = ({ 
   goodsReceiptId, 
@@ -116,13 +117,13 @@ const GoodsReceiptDetailsModal = ({
   }
 
   const handleUploadClick = (reloadFn) => {
-  setReloadDocuments(() => reloadFn);
-  setShowUploadModal(true);
+    setReloadDocuments(() => reloadFn);
+    setShowUploadModal(true);
   };
 
   const handleUploadSuccess = () => {
-  setShowUploadModal(false);
-  if (reloadDocuments) reloadDocuments();
+    setShowUploadModal(false);
+    if (reloadDocuments) reloadDocuments();
   };
 
   const getStatusColor = (status) => {
@@ -140,7 +141,6 @@ const GoodsReceiptDetailsModal = ({
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
-    // Handle verschiedene Time-Formate
     const timeMatch = timeString.match(/(\d{2}):(\d{2})/);
     return timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : timeString;
   };
@@ -360,33 +360,28 @@ const GoodsReceiptDetailsModal = ({
             )}
           </div>
 
-          {/* Foto */}
+          {/* Dokumente */}
+          <div className="details-section">
+            <h3>📄 Dokumente</h3>
+            <DocumentsDisplay
+              warenannahmeId={details.kWarenannahme}
+              userRole="employee"
+              onDocumentCountChange={setDocumentCount}
+              onUploadClick={handleUploadClick}
+              hideTitle={true}
+            />
+          </div>
+
+          {/* Foto-Galerie - zeigt ALLE Fotos */}
           {details.cFotoPath && (
             <div className="details-section">
-              <h3>📷 Foto</h3>
-              <div className="photo-section">
-                <button 
-                  className="photo-preview-button"
-                  onClick={() => onPhotoClick && onPhotoClick(details.cFotoPath)}
-                >
-                  <Camera size={20} />
-                  Foto anzeigen
-                </button>
-              </div>
+              <h3>📷 Fotos der Lieferung</h3>
+              <PhotoGallery 
+                warenannahmeId={details.kWarenannahme}
+                mainPhoto={details.cFotoPath}
+              />
             </div>
           )}
-
-          {/* NEU: Dokumente - HIER EINFÜGEN */}
-<div className="details-section">
-  <h3>📄 Dokumente</h3>
-  <DocumentsDisplay
-    warenannahmeId={details.kWarenannahme}
-    userRole="employee"
-    onDocumentCountChange={setDocumentCount}
-    onUploadClick={handleUploadClick}
-    hideTitle={true}
-  />
-</div>
 
           {/* Status-Änderung */}
           {!editMode && (
@@ -416,12 +411,13 @@ const GoodsReceiptDetailsModal = ({
           )}
         </div>
       </div>
+
       {/* Upload Modal */}
       {showUploadModal && (
         <DeliveryNoteUpload
-        warenannahmeId={details.kWarenannahme}
-        onUploadSuccess={handleUploadSuccess}
-        onClose={() => setShowUploadModal(false)}
+          warenannahmeId={details.kWarenannahme}
+          onUploadSuccess={handleUploadSuccess}
+          onClose={() => setShowUploadModal(false)}
         />
       )}
     </div>

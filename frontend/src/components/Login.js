@@ -1,11 +1,11 @@
-// frontend/src/components/Login.js
+// frontend/src/components/Login.js - MIT TABS
 import React, { useState } from 'react';
 import { authAPI } from '../services/api';
 import './Login.css';
 
 const Login = ({ onLogin }) => {
   const [step, setStep] = useState(1);
-  const [loginType, setLoginType] = useState('customer'); // 'customer' oder 'employee'
+  const [loginType, setLoginType] = useState('customer');
   const [customerNumber, setCustomerNumber] = useState('');
   const [customer, setCustomer] = useState(null);
   const [formData, setFormData] = useState({
@@ -15,47 +15,38 @@ const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
+  const [activeTab, setActiveTab] = useState('login'); // 'login' oder 'register'
 
-  // === MITARBEITER LOGIN ===
   const handleEmployeeLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      console.log('Frontend: Sende Mitarbeiter Login Request...');
       const response = await authAPI.login(formData.email, formData.password, 'employee');
-      console.log('Frontend: Login erfolgreich!', response.data);
       onLogin(response.data.token, response.data.user);
     } catch (err) {
-      console.error('Frontend: Login Fehler:', err);
       setError(err.response?.data?.error || 'Login fehlgeschlagen');
     } finally {
       setLoading(false);
     }
   };
 
-  // === KUNDE LOGIN/REGISTRIERUNG - REPARIERT ===
   const handleCustomerCheck = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      console.log('🔍 Lade Kundendaten für:', customerNumber);
-      
-      // REPARIERT: Verwende neuen Endpoint der IMMER Daten zurückgibt
       const response = await authAPI.getCustomerData(customerNumber);
-      
-      console.log('✅ Kundendaten erhalten:', response.data);
       
       setCustomer(response.data.customer);
       setIsRegistered(response.data.isRegistered);
+      setActiveTab(response.data.isRegistered ? 'login' : 'register');
       setStep(2);
-      setError(''); // Fehler löschen
+      setError('');
       
     } catch (err) {
-      console.error('❌ Fehler beim Laden der Kundendaten:', err);
       setError(err.response?.data?.error || 'Fehler bei der Kundenprüfung');
     } finally {
       setLoading(false);
@@ -89,7 +80,6 @@ const Login = ({ onLogin }) => {
         password: formData.password
       });
       
-      // Nach Registrierung automatisch einloggen
       const response = await authAPI.login(formData.email, formData.password, 'customer');
       onLogin(response.data.token, response.data.user);
     } catch (err) {
@@ -105,7 +95,6 @@ const Login = ({ onLogin }) => {
         <div className="login-header">
           <h1>Eneiro Fulfillment Portal</h1>
           
-          {/* LOGIN TYPE SELECTION */}
           <div className="login-type-tabs">
             <button 
               className={`tab ${loginType === 'customer' ? 'active' : ''}`}
@@ -128,9 +117,6 @@ const Login = ({ onLogin }) => {
                 setStep(1);
                 setError('');
                 setFormData({ email: '', password: '' });
-                setIsRegistered(false);
-                setCustomer(null);
-                setCustomerNumber('');
               }}
             >
               👤 Mitarbeiter
@@ -138,24 +124,22 @@ const Login = ({ onLogin }) => {
           </div>
         </div>
 
-        {/* ERROR DISPLAY */}
         {error && (
           <div className="error-message">
             {error}
           </div>
         )}
 
-        {/* === MITARBEITER LOGIN === */}
         {loginType === 'employee' && (
           <form onSubmit={handleEmployeeLogin}>
             <div className="form-group">
-              <label>Benutzername/Login:</label>
+              <label>Login / E-Mail:</label>
               <input
                 type="text"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                placeholder="JTL Benutzername eingeben"
                 required
+                placeholder="z.B. maikkarlin oder maik@eneiro.de"
               />
             </div>
             <div className="form-group">
@@ -173,7 +157,6 @@ const Login = ({ onLogin }) => {
           </form>
         )}
 
-        {/* === KUNDE LOGIN/REGISTRIERUNG === */}
         {loginType === 'customer' && step === 1 && (
           <form onSubmit={handleCustomerCheck}>
             <div className="form-group">
@@ -182,8 +165,8 @@ const Login = ({ onLogin }) => {
                 type="text"
                 value={customerNumber}
                 onChange={(e) => setCustomerNumber(e.target.value)}
-                placeholder="Ihre Kundennummer eingeben"
                 required
+                placeholder="z.B. FFN190"
               />
             </div>
             <button type="submit" disabled={loading} className="submit-button">
@@ -195,18 +178,39 @@ const Login = ({ onLogin }) => {
         {loginType === 'customer' && step === 2 && customer && (
           <div>
             <div className="customer-info">
-              <h3>
-                {isRegistered ? 'Bereits registriert - Anmelden:' : 'Kunde gefunden:'}
-              </h3>
+              <h3>Kunde gefunden:</h3>
               <p><strong>{customer.company}</strong></p>
               <p>{customer.name}</p>
               <p>Kundennummer: {customer.customerNumber}</p>
             </div>
 
-            {/* IMMER LOGIN-OPTION ANZEIGEN */}
-            <div className="login-options">
-              <div className="option-card">
-                <h4>{isRegistered ? 'Anmelden' : 'Bereits registriert?'}</h4>
+            {/* TAB-NAVIGATION */}
+            <div className="auth-tabs">
+              <button
+                className={`auth-tab ${activeTab === 'login' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('login');
+                  setError('');
+                }}
+              >
+                Anmelden
+              </button>
+              {!isRegistered && (
+                <button
+                  className={`auth-tab ${activeTab === 'register' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('register');
+                    setError('');
+                  }}
+                >
+                  Registrieren
+                </button>
+              )}
+            </div>
+
+            {/* TAB CONTENT */}
+            <div className="auth-tab-content">
+              {activeTab === 'login' && (
                 <form onSubmit={handleCustomerLogin}>
                   <div className="form-group">
                     <label>E-Mail:</label>
@@ -222,16 +226,13 @@ const Login = ({ onLogin }) => {
                         ))}
                       </select>
                     ) : (
-                      <div className="no-emails-found">
-                        <p>⚠️ Keine E-Mail-Adressen gefunden</p>
-                        <input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          placeholder="E-Mail eingeben"
-                          required
-                        />
-                      </div>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        placeholder="E-Mail eingeben"
+                        required
+                      />
                     )}
                   </div>
                   <div className="form-group">
@@ -247,15 +248,13 @@ const Login = ({ onLogin }) => {
                     {loading ? 'Anmeldung...' : 'Anmelden'}
                   </button>
                 </form>
-              </div>
+              )}
 
-              {/* NUR REGISTRIERUNG ANZEIGEN WENN NICHT BEREITS REGISTRIERT */}
-              {!isRegistered && customer.emails && customer.emails.length > 0 && (
-                <div className="option-card">
-                  <h4>Erstmalige Registrierung</h4>
-                  <form onSubmit={handleRegister}>
-                    <div className="form-group">
-                      <label>E-Mail:</label>
+              {activeTab === 'register' && !isRegistered && (
+                <form onSubmit={handleRegister}>
+                  <div className="form-group">
+                    <label>E-Mail:</label>
+                    {customer.emails && customer.emails.length > 0 ? (
                       <select
                         value={formData.email}
                         onChange={(e) => setFormData({...formData, email: e.target.value})}
@@ -266,31 +265,34 @@ const Login = ({ onLogin }) => {
                           <option key={index} value={email}>{email}</option>
                         ))}
                       </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Neues Passwort:</label>
-                      <input
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                        required
-                        minLength="8"
-                        placeholder="Mindestens 8 Zeichen"
-                      />
-                    </div>
-                    <button type="submit" disabled={loading} className="submit-button register">
-                      {loading ? 'Registrierung...' : 'Registrieren'}
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* INFO WENN KEINE E-MAILS GEFUNDEN */}
-              {!isRegistered && (!customer.emails || customer.emails.length === 0) && (
-                <div className="option-card">
-                  <h4>⚠️ Keine E-Mail-Adressen gefunden</h4>
-                  <p>Für diese Kundennummer sind keine E-Mail-Adressen hinterlegt. Bitte kontaktieren Sie den Support.</p>
-                </div>
+                    ) : (
+                      <div className="no-emails-warning">
+                        <p>⚠️ Keine E-Mail-Adressen hinterlegt</p>
+                        <p style={{fontSize: '13px', color: '#666', marginTop: '8px'}}>
+                          Bitte kontaktieren Sie den Support
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {customer.emails && customer.emails.length > 0 && (
+                    <>
+                      <div className="form-group">
+                        <label>Neues Passwort:</label>
+                        <input
+                          type="password"
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          required
+                          minLength="8"
+                          placeholder="Mindestens 8 Zeichen"
+                        />
+                      </div>
+                      <button type="submit" disabled={loading} className="submit-button register">
+                        {loading ? 'Registrierung...' : 'Registrieren'}
+                      </button>
+                    </>
+                  )}
+                </form>
               )}
             </div>
 
@@ -301,6 +303,7 @@ const Login = ({ onLogin }) => {
                 setCustomerNumber('');
                 setFormData({ email: '', password: '' });
                 setIsRegistered(false);
+                setActiveTab('login');
                 setError('');
               }}
               className="back-button"

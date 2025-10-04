@@ -1,4 +1,4 @@
-// frontend/src/components/CustomerGoodsReceipts.js - DEIN ORIGINALER CODE + NUR CSS-KLASSEN
+// frontend/src/components/CustomerGoodsReceipts.js - MIT PHOTO GALLERY
 import React, { useState, useEffect } from 'react';
 import { 
   Package, 
@@ -14,8 +14,9 @@ import {
 } from 'lucide-react';
 import { goodsReceiptAPI } from '../services/api';
 import './CustomerGoodsReceipts.css';
-import './GoodsReceiptDetailsModal.css'; // Das moderne CSS
+import './GoodsReceiptDetailsModal.css';
 import DocumentsDisplay from './DocumentsDisplay';
+import PhotoGallery from './PhotoGallery'; // ✅ NEU HINZUGEFÜGT
 
 const CustomerGoodsReceipts = () => {
   const [receipts, setReceipts] = useState([]);
@@ -25,7 +26,6 @@ const CustomerGoodsReceipts = () => {
   const [photoModal, setPhotoModal] = useState(null);
   const [documentCounts, setDocumentCounts] = useState({});
   
-  // Such- und Filter-States
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('alle');
   const [filteredReceipts, setFilteredReceipts] = useState([]);
@@ -34,7 +34,6 @@ const CustomerGoodsReceipts = () => {
     loadCustomerReceipts();
   }, []);
 
-  // Filter-Logik
   useEffect(() => {
     if (!receipts || !Array.isArray(receipts)) {
       console.warn('⚠️ receipts ist kein Array:', receipts);
@@ -44,7 +43,6 @@ const CustomerGoodsReceipts = () => {
 
     let filtered = [...receipts];
 
-    // Suchfilter
     if (searchTerm) {
       filtered = filtered.filter(item => 
         (item.kWarenannahme && item.kWarenannahme.toString().includes(searchTerm)) ||
@@ -53,7 +51,6 @@ const CustomerGoodsReceipts = () => {
       );
     }
 
-    // Status-Filter
     if (statusFilter !== 'alle') {
       filtered = filtered.filter(item => item.cStatus === statusFilter);
     }
@@ -61,7 +58,6 @@ const CustomerGoodsReceipts = () => {
     setFilteredReceipts(filtered);
   }, [receipts, searchTerm, statusFilter]);
 
-  // NEU: Dokument-Anzahl für alle Warenannahmen laden
   useEffect(() => {
     if (Array.isArray(receipts) && receipts.length > 0) {
       receipts.forEach(receipt => {
@@ -70,13 +66,11 @@ const CustomerGoodsReceipts = () => {
     }
   }, [receipts]);
 
-  // NEU: Funktion zum Laden der Dokument-Anzahl
   const loadDocumentCount = async (warenannahmeId) => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       
-      const response = await fetch(`${apiUrl}/documents/warenannahme/${warenannahmeId}`, {
+      const response = await fetch(`/api/documents/warenannahme/${warenannahmeId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -90,7 +84,6 @@ const CustomerGoodsReceipts = () => {
         }));
       }
     } catch (err) {
-      // Stillschweigend ignorieren - Dokumente sind optional
       console.log('Dokumente für Warenannahme', warenannahmeId, 'konnten nicht geladen werden');
     }
   };
@@ -105,12 +98,10 @@ const CustomerGoodsReceipts = () => {
       
       console.log('✅ API Response:', response.data);
       
-      // Sichere Datenextraktion
       const data = response.data?.data || response.data || [];
       
       console.log('✅ Extrahierte Receipts:', data.length, 'Einträge');
       
-      // Sicherheitsprüfung
       setReceipts(Array.isArray(data) ? data : []);
       
     } catch (err) {
@@ -211,7 +202,6 @@ const CustomerGoodsReceipts = () => {
         </button>
       </div>
 
-      {/* Such- und Filterbereich */}
       <div className="search-filter-container">
         <div className="search-wrapper">
           <Search size={20} className="search-icon" />
@@ -239,7 +229,6 @@ const CustomerGoodsReceipts = () => {
         </div>
       </div>
       
-      {/* Ergebnisinfo */}
       {(searchTerm || statusFilter !== 'alle') && (
         <div className="filter-info">
           {filteredReceipts.length} von {receipts.length} Einträgen gefunden
@@ -340,7 +329,6 @@ const CustomerGoodsReceipts = () => {
         </div>
       )}
 
-      {/* Foto-Modal */}
       {photoModal && (
         <PhotoModal 
           photoPath={photoModal} 
@@ -348,7 +336,6 @@ const CustomerGoodsReceipts = () => {
         />
       )}
 
-      {/* Details-Modal */}
       {selectedReceipt && (
         <ReceiptDetailsModal 
           receipt={selectedReceipt} 
@@ -359,24 +346,19 @@ const CustomerGoodsReceipts = () => {
   );
 };
 
-// ===== REPARIERTE FOTO-MODAL KOMPONENTE =====
 const PhotoModal = ({ photoPath, onClose }) => {
   console.log('🖼️ PhotoModal (Customer) - Foto-Pfad:', photoPath);
   
-  // Korrekte URL konstruieren
   const getPhotoUrl = (path) => {
     if (!path) return null;
     
-    // Backslashes durch Slashes ersetzen
     const cleanPath = path.replace(/\\/g, '/');
     
-    // Wenn bereits mit "uploads/" beginnt, direkt verwenden
     if (cleanPath.startsWith('uploads/')) {
-      return `http://localhost:5000/${cleanPath}`;
+      return `/${cleanPath}`;
     }
     
-    // Ansonsten "uploads/warenannahme/" voranstellen
-    return `http://localhost:5000/uploads/warenannahme/${cleanPath}`;
+    return `/uploads/warenannahme/${cleanPath}`;
   };
   
   const photoUrl = getPhotoUrl(photoPath);
@@ -424,7 +406,6 @@ const PhotoModal = ({ photoPath, onClose }) => {
   );
 };
 
-// ===== DEINE ORIGINALE DETAILS-MODAL NUR MIT SCHÖNEN CSS-KLASSEN =====
 const ReceiptDetailsModal = ({ receipt, onClose }) => {
   const [documentCount, setDocumentCount] = useState(0);
 
@@ -432,7 +413,6 @@ const ReceiptDetailsModal = ({ receipt, onClose }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content details-modal" onClick={(e) => e.stopPropagation()}>
         
-        {/* Header - NUR CSS-KLASSEN GEÄNDERT */}
         <div className="modal-header">
           <div className="modal-title">
             <h2>Warenannahme #{receipt.kWarenannahme}</h2>
@@ -449,7 +429,6 @@ const ReceiptDetailsModal = ({ receipt, onClose }) => {
         
         <div className="modal-body">
           
-          {/* Bestehende Detail-Grid - NUR CSS-KLASSEN GEÄNDERT */}
           <div className="details-section" style={{ marginTop: '0px' }}>
             <h3 style={{ marginTop: '0px' }}>📋 Basis-Informationen</h3>
             <div className="details-grid">
@@ -515,43 +494,26 @@ const ReceiptDetailsModal = ({ receipt, onClose }) => {
             </div>
           </div>
 
-          {/* NEU: Dokumente-Sektion */}
           <div className="details-section">
             <h3>📄 Lieferscheine & Dokumente</h3>
             <DocumentsDisplay
               warenannahmeId={receipt.kWarenannahme}
               userRole="customer"
               onDocumentCountChange={setDocumentCount}
-              onUploadClick={null} // Kunden können nicht uploaden
+              onUploadClick={null}
             />
           </div>
           
-          {/* Bestehende Foto-Sektion */}
-          {receipt.cFotoPath && (
-            <div className="details-section">
-              <h3>📷 Foto der Lieferung</h3>
-              <div className="photo-section">
-                <img 
-                  src={(() => {
-                    const cleanPath = receipt.cFotoPath.replace(/\\/g, '/');
-                    const finalUrl = cleanPath.startsWith('uploads/') 
-                      ? `http://localhost:5000/${cleanPath}`
-                      : `http://localhost:5000/uploads/warenannahme/${cleanPath}`;
-                    console.log('🖼️ Details Modal Foto-URL:', finalUrl);
-                    return finalUrl;
-                  })()}
-                  alt="Warenannahme Foto" 
-                  className="receipt-photo"
-                  style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }}
-                  onError={(e) => {
-                    console.error('❌ Details Modal Foto-Fehler');
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML += '<p>❌ Foto konnte nicht geladen werden</p>';
-                  }}
-                />
-              </div>
-            </div>
-          )}
+          {/* ✅ NEU: Foto-Galerie für mehrere Fotos */}
+          <div className="details-section">
+            <h3>📷 Fotos der Lieferung</h3>
+            <PhotoGallery 
+              warenannahmeId={receipt.kWarenannahme}
+              mainPhoto={receipt.cFotoPath}
+              userRole="customer"
+            />
+          </div>
+          
         </div>
       </div>
     </div>

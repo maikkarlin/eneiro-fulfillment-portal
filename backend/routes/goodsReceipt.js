@@ -1,9 +1,10 @@
-// backend/routes/goodsReceipt.js - ERWEITERT mit /stats Endpoint + ZEIT-FIX
+// backend/routes/goodsReceipt.js - KOMPLETT MIT MULTI-PHOTO SUPPORT UND ZEIT-FIX
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 const { getConnection, sql } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -25,22 +26,54 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB Limit
+    fileSize: 50 * 1024 * 1024 // 50MB
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif/;
+    const allowedTypes = /jpeg|jpg|png|gif|heic|heif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
     
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Nur Bilder sind erlaubt (JPEG, JPG, PNG, GIF)'));
+      cb(new Error('Nur Bilder sind erlaubt (JPEG, JPG, PNG, GIF, HEIC)'));
     }
   }
 });
 
-// NEU: Stats Endpoint (für Frontend-Kompatibilität)
+// Bild-Komprimierungs-Funktion
+async function compressImage(inputPath, outputPath) {
+  try {
+    const tempPath = outputPath + '.tmp';
+    
+    await sharp(inputPath)
+      .resize(1920, 1920, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ 
+        quality: 85,
+        progressive: true 
+      })
+      .toFile(tempPath);
+    
+    fs.unlinkSync(inputPath);
+    fs.renameSync(tempPath, outputPath);
+    
+    console.log('✅ Bild komprimiert:', outputPath);
+    return true;
+  } catch (error) {
+    console.error('❌ Fehler bei Komprimierung:', error);
+    
+    try {
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    } catch (e) {}
+    
+    return false;
+  }
+}
+
+// Stats Endpoint
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
     console.log('📊 Lade Warenannahme-Statistiken...');
@@ -48,7 +81,6 @@ router.get('/stats', authenticateToken, async (req, res) => {
     const pool = await getConnection();
     const today = new Date().toISOString().split('T')[0];
     
-    // Statistiken sammeln - NUR für Fulfillment-Kunden (kLabel = 2)
     const [
       heutigeAnlieferungen,
       offeneEinlagerungen,
@@ -98,7 +130,6 @@ router.get('/stats', authenticateToken, async (req, res) => {
       offeneEinlagerungen: offeneEinlagerungen.recordset[0].count,
       inBearbeitung: inBearbeitung.recordset[0].count,
       gesamtPackstuecke: gesamtPackstuecke.recordset[0].count,
-      // Alias für Frontend-Kompatibilität:
       HeutigeAnlieferungen: heutigeAnlieferungen.recordset[0].count,
       OffeneEinlagerungen: offeneEinlagerungen.recordset[0].count,
       InBearbeitung: inBearbeitung.recordset[0].count,
@@ -114,7 +145,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
   }
 });
 
-// Alle Warenannahmen für Mitarbeiter abrufen (nur Fulfillment-Kunden)
+// Alle Warenannahmen für Mitarbeiter
 router.get('/', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'employee') {
@@ -129,7 +160,7 @@ router.get('/', authenticateToken, async (req, res) => {
         SELECT 
           w.kWarenannahme,
           w.dDatum,
-          CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+          CONVERT(VARCHAR(8), w.tUhrzeit, 108) AS tUhrzeit,
           w.kKunde,
           w.cTransporteur,
           w.cPackstueckArt,
@@ -155,6 +186,13 @@ router.get('/', authenticateToken, async (req, res) => {
         ORDER BY w.dDatum DESC, w.tUhrzeit DESC
       `);
     
+    // Zeit in allen Einträgen auf HH:MM kürzen
+    result.recordset.forEach(record => {
+      if (record.tUhrzeit && record.tUhrzeit.length > 5) {
+        record.tUhrzeit = record.tUhrzeit.substring(0, 5);
+      }
+    });
+    
     console.log(`✅ ${result.recordset.length} Warenannahmen geladen`);
     
     res.json({
@@ -169,7 +207,7 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Alle Warenannahmen für angemeldeten Kunden abrufen (nur Fulfillment-Kunden)
+// Warenannahmen für Kunden
 router.get('/customer', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'customer') {
@@ -178,7 +216,6 @@ router.get('/customer', authenticateToken, async (req, res) => {
 
     console.log('📦 Lade Warenannahmen für Kunde:', req.user.customerNumber);
 
-    // Hole kKunde basierend auf der Kundennummer UND prüfe kLabel = 2
     const pool = await getConnection();
     const customerResult = await pool.request()
       .input('customerNumber', sql.NVarChar, req.user.customerNumber)
@@ -195,14 +232,13 @@ router.get('/customer', authenticateToken, async (req, res) => {
 
     const kKunde = customerResult.recordset[0].kKunde;
 
-    // Hole alle Warenannahmen für diesen Fulfillment-Kunden
     const warenannahmenResult = await pool.request()
       .input('kKunde', sql.Int, kKunde)
       .query(`
         SELECT 
           w.kWarenannahme,
           w.dDatum,
-          CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+          CONVERT(VARCHAR(8), w.tUhrzeit, 108) AS tUhrzeit,
           w.kKunde,
           w.cTransporteur,
           w.cPackstueckArt,
@@ -226,6 +262,13 @@ router.get('/customer', authenticateToken, async (req, res) => {
         ORDER BY w.dDatum DESC, w.tUhrzeit DESC
       `);
 
+    // Zeit in allen Einträgen auf HH:MM kürzen
+    warenannahmenResult.recordset.forEach(record => {
+      if (record.tUhrzeit && record.tUhrzeit.length > 5) {
+        record.tUhrzeit = record.tUhrzeit.substring(0, 5);
+      }
+    });
+
     console.log(`✅ ${warenannahmenResult.recordset.length} Warenannahmen für Kunde ${req.user.customerNumber} geladen`);
 
     res.json({
@@ -240,10 +283,9 @@ router.get('/customer', authenticateToken, async (req, res) => {
   }
 });
 
-// Einzelne Warenannahme abrufen (nur für Mitarbeiter, nur Fulfillment-Kunden)
+// Einzelne Warenannahme für Mitarbeiter
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    // ✅ ROLLE ÜBERPRÜFEN: Nur Mitarbeiter können Details laden
     if (req.user.role !== 'employee') {
       return res.status(403).json({ error: 'Nur für Mitarbeiter' });
     }
@@ -260,7 +302,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         SELECT 
           w.kWarenannahme,
           w.dDatum,
-          CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+          CONVERT(VARCHAR(8), w.tUhrzeit, 108) AS tUhrzeit,
           w.kKunde,
           w.cTransporteur,
           w.cPackstueckArt,
@@ -289,8 +331,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Warenannahme nicht gefunden oder kein Fulfillment-Kunde' });
     }
     
-    console.log('✅ Warenannahme Details geladen für Mitarbeiter');
-    res.json(result.recordset[0]);
+    // Zeit auf HH:MM kürzen falls Sekunden vorhanden
+    const record = result.recordset[0];
+    if (record.tUhrzeit && record.tUhrzeit.length > 5) {
+      record.tUhrzeit = record.tUhrzeit.substring(0, 5);
+    }
+    
+    console.log('✅ Warenannahme Details geladen für Mitarbeiter, Zeit:', record.tUhrzeit);
+    res.json(record);
     
   } catch (error) {
     console.error('❌ Fehler beim Laden der Warenannahme:', error);
@@ -298,7 +346,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Einzelne Warenannahme für Kunden abrufen (nur Fulfillment-Kunden)
+// Einzelne Warenannahme für Kunden
 router.get('/customer/:id', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'customer') {
@@ -318,7 +366,7 @@ router.get('/customer/:id', authenticateToken, async (req, res) => {
         SELECT 
           w.kWarenannahme,
           w.dDatum,
-          CONVERT(VARCHAR(5), w.tUhrzeit, 108) AS tUhrzeit,
+          CONVERT(VARCHAR(8), w.tUhrzeit, 108) AS tUhrzeit,
           w.kKunde,
           w.cTransporteur,
           w.cPackstueckArt,
@@ -349,7 +397,14 @@ router.get('/customer/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Warenannahme nicht gefunden oder kein Zugriff' });
     }
     
-    res.json(result.recordset[0]);
+    // Zeit auf HH:MM kürzen falls Sekunden vorhanden
+    const record = result.recordset[0];
+    if (record.tUhrzeit && record.tUhrzeit.length > 5) {
+      record.tUhrzeit = record.tUhrzeit.substring(0, 5);
+    }
+    
+    console.log('✅ Warenannahme Details geladen für Kunde, Zeit:', record.tUhrzeit);
+    res.json(record);
     
   } catch (error) {
     console.error('❌ Fehler beim Laden der Kundenwarenannahme:', error);
@@ -357,8 +412,11 @@ router.get('/customer/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Neue Warenannahme erstellen - ✅ ZEIT-FIX HIER!
-router.post('/', authenticateToken, upload.single('photo'), async (req, res) => {
+// Warenannahme erstellen MIT MULTI-PHOTO SUPPORT
+router.post('/', authenticateToken, upload.fields([
+  { name: 'photo', maxCount: 1 },
+  { name: 'additionalPhotos', maxCount: 10 }
+]), async (req, res) => {
   try {
     if (req.user.role !== 'employee') {
       return res.status(403).json({ error: 'Nur Mitarbeiter können Warenannahmen erstellen' });
@@ -366,7 +424,7 @@ router.post('/', authenticateToken, upload.single('photo'), async (req, res) => 
 
     console.log('📦 Erstelle neue Warenannahme...');
     console.log('Body:', req.body);
-    console.log('File:', req.file);
+    console.log('Files:', req.files);
 
     const {
       kKunde,
@@ -377,8 +435,8 @@ router.post('/', authenticateToken, upload.single('photo'), async (req, res) => 
       bPalettentausch,
       cJTLLieferantenbestellnummer,
       cAnmerkung,
-      dDatum,    // ✅ NEU: Falls Frontend spezifisches Datum sendet
-      tUhrzeit   // ✅ NEU: Falls Frontend spezifische Zeit sendet
+      dDatum,
+      tUhrzeit
     } = req.body;
 
     // Validierung
@@ -401,34 +459,52 @@ router.post('/', authenticateToken, upload.single('photo'), async (req, res) => 
       return res.status(400).json({ error: 'Kein gültiger Fulfillment-Kunde' });
     }
 
-    const fotoPath = req.file ? req.file.filename : null;
-    const now = new Date();
+    // HAUPTFOTO verarbeiten (Abwärtskompatibilität)
+    const mainPhoto = req.files?.photo?.[0];
+    let fotoPath = null;
+    
+    if (mainPhoto) {
+      console.log('📸 Hauptfoto - Original Größe:', (mainPhoto.size / 1024 / 1024).toFixed(2), 'MB');
+      
+      const compressedFilename = mainPhoto.filename.replace(/\.(png|jpeg|jpg|gif|heic|heif)$/i, '.jpg');
+      const compressedPath = path.join('uploads', 'warenannahme', compressedFilename);
+      
+      const compressed = await compressImage(mainPhoto.path, compressedPath);
+      
+      if (compressed) {
+        fotoPath = compressedFilename;
+        const stats = fs.statSync(compressedPath);
+        console.log('✅ Hauptfoto komprimiert:', (stats.size / 1024 / 1024).toFixed(2), 'MB');
+      } else {
+        fotoPath = mainPhoto.filename;
+      }
+    }
 
-    // ✅ DATETIME-TRICK: MSSQL TIME via DateTime umgehen
+    const now = new Date();
     let finalDate, timeStr;
     
     if (dDatum) {
-      finalDate = dDatum; // Frontend sendet bereits ISO-Format
+      finalDate = dDatum;
     } else {
-      finalDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      finalDate = now.toISOString().split('T')[0];
     }
     
     if (tUhrzeit) {
-      timeStr = tUhrzeit; // Frontend: "19:07"
+      timeStr = tUhrzeit;
       console.log('🕐 Zeit vom Frontend:', tUhrzeit);
     } else {
-      timeStr = now.toTimeString().slice(0, 5); // "HH:mm"
+      const localTime = new Date();
+      timeStr = localTime.getHours().toString().padStart(2, '0') + ':' + 
+                localTime.getMinutes().toString().padStart(2, '0');
     }
 
-    // DateTime-Objekt für TIME-Umgehung erstellen
-    const combinedDateTime = new Date(`${finalDate}T${timeStr}:00`);
-    
+    // WICHTIG: Zeit direkt als String verwenden, KEINE Date-Konvertierung
     console.log('📅 Finale Werte - Datum:', finalDate, 'Zeit:', timeStr);
-    console.log('🔄 Combined DateTime:', combinedDateTime);
 
+    // Warenannahme in DB erstellen
     const result = await pool.request()
       .input('dDatum', sql.Date, finalDate)
-      .input('dDateTime', sql.DateTime, combinedDateTime) // ✅ DateTime statt Time
+      .input('tUhrzeit', sql.VarChar(5), timeStr)
       .input('kKunde', sql.Int, kKunde)
       .input('cTransporteur', sql.NVarChar, cTransporteur)
       .input('cPackstueckArt', sql.NVarChar, cPackstueckArt)
@@ -447,7 +523,7 @@ router.post('/', authenticateToken, upload.single('photo'), async (req, res) => 
           cJTLLieferantenbestellnummer, cAnmerkung, cFotoPath, 
           kBenutzer, cStatus, dErstellt, dGeaendert
         ) VALUES (
-          @dDatum, CAST(@dDateTime AS time), @kKunde, @cTransporteur, @cPackstueckArt,
+          @dDatum, CAST(@tUhrzeit AS time), @kKunde, @cTransporteur, @cPackstueckArt,
           @nAnzahlPackstuecke, @cZustand, @bPalettentausch,
           @cJTLLieferantenbestellnummer, @cAnmerkung, @cFotoPath,
           @kBenutzer, @cStatus, GETDATE(), GETDATE()
@@ -456,17 +532,108 @@ router.post('/', authenticateToken, upload.single('photo'), async (req, res) => 
       `);
 
     const kWarenannahme = result.recordset[0].kWarenannahme;
+    console.log('✅ Warenannahme erstellt mit ID:', kWarenannahme);
 
-    console.log('✅ Warenannahme erstellt:', kWarenannahme);
+    // ZUSÄTZLICHE FOTOS verarbeiten und speichern
+    const additionalPhotos = req.files?.additionalPhotos || [];
+    
+    if (additionalPhotos.length > 0) {
+      console.log(`📸 Verarbeite ${additionalPhotos.length} zusätzliche Fotos...`);
+      
+      // Prüfen ob Tabelle tWarenannahmeFoto existiert
+      const tableCheck = await pool.request().query(`
+        SELECT COUNT(*) as count 
+        FROM INFORMATION_SCHEMA.TABLES 
+        WHERE TABLE_NAME = 'tWarenannahmeFoto'
+      `);
+      
+      if (tableCheck.recordset[0].count > 0) {
+        // Tabelle existiert - Fotos verarbeiten und speichern
+        for (let i = 0; i < additionalPhotos.length; i++) {
+          const photo = additionalPhotos[i];
+          
+          console.log(`📸 Foto ${i+1} - Original Größe:`, (photo.size / 1024 / 1024).toFixed(2), 'MB');
+          
+          // Komprimieren
+          const compressedFilename = photo.filename.replace(/\.(png|jpeg|jpg|gif|heic|heif)$/i, '.jpg');
+          const compressedPath = path.join('uploads', 'warenannahme', compressedFilename);
+          
+          const compressed = await compressImage(photo.path, compressedPath);
+          const finalFilename = compressed ? compressedFilename : photo.filename;
+          
+          if (compressed) {
+            const stats = fs.statSync(compressedPath);
+            console.log(`✅ Foto ${i+1} komprimiert:`, (stats.size / 1024 / 1024).toFixed(2), 'MB');
+          }
+          
+          // In DB speichern
+          const sortOrder = i + 2; // Hauptfoto = 1, weitere ab 2
+          
+          await pool.request()
+            .input('kWarenannahme', sql.Int, kWarenannahme)
+            .input('cDateiPfad', sql.VarChar(500), finalFilename)
+            .input('cDateiName', sql.VarChar(255), finalFilename)
+            .input('bIstHauptfoto', sql.Bit, false)
+            .input('nReihenfolge', sql.Int, sortOrder)
+            .query(`
+              INSERT INTO tWarenannahmeFoto (
+                kWarenannahme, cDateiPfad, cDateiName, bIstHauptfoto, nReihenfolge, dErstellt
+              ) VALUES (
+                @kWarenannahme, @cDateiPfad, @cDateiName, @bIstHauptfoto, @nReihenfolge, GETDATE()
+              )
+            `);
+        }
+        
+        console.log(`✅ ${additionalPhotos.length} zusätzliche Fotos gespeichert`);
+      } else {
+        console.warn('⚠️ Tabelle tWarenannahmeFoto existiert nicht - zusätzliche Fotos werden nicht gespeichert');
+        console.warn('⚠️ Führe SQL-Migration aus um Multi-Photo Feature zu nutzen');
+      }
+    }
+
+    const totalPhotos = (mainPhoto ? 1 : 0) + additionalPhotos.length;
+    console.log(`✅ Gesamt ${totalPhotos} Foto(s) verarbeitet`);
 
     res.json({
       message: 'Warenannahme erfolgreich erstellt',
       kWarenannahme,
-      fotoPath
+      fotoPath,
+      totalPhotos
     });
 
   } catch (error) {
     console.error('❌ Fehler beim Erstellen der Warenannahme:', error);
+    
+    // Bei Fehler: Alle hochgeladenen Dateien löschen
+    if (req.files) {
+      if (req.files.photo) {
+        req.files.photo.forEach(file => {
+          const filepath = path.join('uploads', 'warenannahme', file.filename);
+          if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+            console.log('🗑️ Gelöscht:', filepath);
+          }
+        });
+      }
+      if (req.files.additionalPhotos) {
+        req.files.additionalPhotos.forEach(file => {
+          const filepath = path.join('uploads', 'warenannahme', file.filename);
+          if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+            console.log('🗑️ Gelöscht:', filepath);
+          }
+        });
+      }
+    }
+    
+    // Bessere Fehlermeldungen
+    if (error.message.includes('Nur Bilder')) {
+      return res.status(400).json({ error: 'Ungültiges Dateiformat. Nur Bilder erlaubt.' });
+    }
+    if (error.message.includes('File too large')) {
+      return res.status(400).json({ error: 'Datei zu groß. Maximum 50MB.' });
+    }
+    
     res.status(500).json({ error: 'Fehler beim Erstellen der Warenannahme: ' + error.message });
   }
 });
@@ -495,7 +662,6 @@ router.put('/:id', authenticateToken, upload.single('photo'), async (req, res) =
 
     const pool = await getConnection();
 
-    // Erstelle UPDATE Query
     let updateQuery = `
       UPDATE tWarenannahme 
       SET 
@@ -519,10 +685,18 @@ router.put('/:id', authenticateToken, upload.single('photo'), async (req, res) =
       .input('cJTLLieferantenbestellnummer', sql.NVarChar, cJTLLieferantenbestellnummer || null)
       .input('cAnmerkung', sql.NVarChar, cAnmerkung || null);
 
-    // Wenn neues Foto hochgeladen wurde
     if (req.file) {
+      console.log('📸 Update - Original Größe:', (req.file.size / 1024 / 1024).toFixed(2), 'MB');
+      
+      const compressedFilename = req.file.filename.replace(/\.(png|jpeg|jpg|gif|heic|heif)$/i, '.jpg');
+      const compressedPath = path.join('uploads', 'warenannahme', compressedFilename);
+      
+      const compressed = await compressImage(req.file.path, compressedPath);
+      
+      const finalFilename = compressed ? compressedFilename : req.file.filename;
+      
       updateQuery += `, cFotoPath = @cFotoPath`;
-      request.input('cFotoPath', sql.NVarChar, req.file.filename);
+      request.input('cFotoPath', sql.NVarChar, finalFilename);
     }
 
     updateQuery += ` WHERE kWarenannahme = @kWarenannahme`;
@@ -542,7 +716,7 @@ router.put('/:id', authenticateToken, upload.single('photo'), async (req, res) =
   }
 });
 
-// Status aktualisieren (nur für Mitarbeiter)
+// Status aktualisieren
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'employee') {
@@ -612,6 +786,54 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('❌ Fehler beim Löschen der Warenannahme:', error);
     res.status(500).json({ error: 'Fehler beim Löschen der Warenannahme' });
+  }
+});
+
+// Alle Fotos einer Warenannahme abrufen
+router.get('/:id/photos', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const kWarenannahme = parseInt(id);
+    
+    console.log('📸 Lade alle Fotos für Warenannahme:', kWarenannahme);
+
+    const pool = await getConnection();
+    
+    // Prüfen ob Tabelle existiert
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as count 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_NAME = 'tWarenannahmeFoto'
+    `);
+    
+    if (tableCheck.recordset[0].count === 0) {
+      return res.json([]);
+    }
+
+    // Alle Fotos laden
+    const result = await pool.request()
+      .input('kWarenannahme', sql.Int, kWarenannahme)
+      .query(`
+        SELECT 
+          kFoto,
+          kWarenannahme,
+          cDateiPfad,
+          cDateiName,
+          bIstHauptfoto,
+          nReihenfolge,
+          dErstellt
+        FROM tWarenannahmeFoto
+        WHERE kWarenannahme = @kWarenannahme
+        ORDER BY nReihenfolge, dErstellt
+      `);
+    
+    console.log(`✅ ${result.recordset.length} Fotos geladen`);
+    
+    res.json(result.recordset);
+    
+  } catch (error) {
+    console.error('❌ Fehler beim Laden der Fotos:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Fotos' });
   }
 });
 

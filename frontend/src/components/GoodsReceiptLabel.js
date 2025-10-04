@@ -1,34 +1,50 @@
 // frontend/src/components/GoodsReceiptLabel.js
 import React from 'react';
-import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode'; // Neue Library für EAN128/Code128
 import jsPDF from 'jspdf';
 import './GoodsReceiptLabel.css';
 
 const GoodsReceiptLabel = ({ goodsReceipt, onPrint, onClose }) => {
-  const [qrCodeUrl, setQrCodeUrl] = React.useState('');
+  const [barcodeUrl, setBarcodeUrl] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   
-  // QR Code generieren
+  // EAN128 Barcode generieren
   React.useEffect(() => {
-    const generateQR = async () => {
+    const generateBarcode = async () => {
       try {
-        // QR Code Inhalt: WA-ID|Kunde|Datum|Status
-        const qrContent = `WA-${goodsReceipt.kWarenannahme}|${goodsReceipt.KundenFirma}|${goodsReceipt.dDatum}|${goodsReceipt.cStatus}`;
-        const url = await QRCode.toDataURL(qrContent, {
-          width: 200,
-          margin: 1,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF'
-          }
+        // Canvas Element erstellen
+        const canvas = document.createElement('canvas');
+        
+        // ID für Barcode (z.B. "WA-11")
+        const barcodeText = `WA-${goodsReceipt.kWarenannahme}`;
+
+        console.log('🔍 BARCODE DEBUG:', barcodeText, 'JsBarcode geladen:', typeof JsBarcode);
+        
+        // EAN128/Code128 Barcode generieren
+        JsBarcode(canvas, barcodeText, {
+          format: "CODE128", // EAN128 basiert auf Code128
+          width: 2,
+          height: 80,
+          displayValue: true, // Text unter dem Barcode anzeigen
+          fontSize: 14,
+          textMargin: 8,
+          margin: 10,
+          background: "#FFFFFF",
+          lineColor: "#000000"
         });
-        setQrCodeUrl(url);
+        
+        // Canvas zu Data URL konvertieren
+        const dataUrl = canvas.toDataURL('image/png');
+        setBarcodeUrl(dataUrl);
+        
       } catch (err) {
-        console.error('QR Code Fehler:', err);
+        console.error('Barcode Fehler:', err);
+        // Fallback: Text anzeigen wenn Barcode fehlschlägt
+        setBarcodeUrl('');
       }
     };
     
-    generateQR();
+    generateBarcode();
   }, [goodsReceipt]);
   
   const generatePDF = async () => {
@@ -58,19 +74,19 @@ const GoodsReceiptLabel = ({ goodsReceipt, onPrint, onClose }) => {
       pdf.setDrawColor(150, 150, 150);
       pdf.line(10, 20, 140, 20);
       
-      // QR Code
-      if (qrCodeUrl) {
-        pdf.addImage(qrCodeUrl, 'PNG', 10, 25, 35, 35);
+      // Barcode (falls vorhanden)
+      if (barcodeUrl) {
+        pdf.addImage(barcodeUrl, 'PNG', 10, 25, 60, 25); // Breiterer Barcode
       }
       
-      // Informationen
+      // Informationen (rechts neben dem Barcode)
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'normal');
       
-      // WA-Nummer (groß)
+      // WA-Nummer (groß) - rechts vom Barcode
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(`WA-${goodsReceipt.kWarenannahme}`, 50, 30);
+      pdf.text(`WA-${goodsReceipt.kWarenannahme}`, 80, 30);
       
       // Details
       pdf.setFontSize(10);
@@ -87,9 +103,9 @@ const GoodsReceiptLabel = ({ goodsReceipt, onPrint, onClose }) => {
       let yPos = 40;
       details.forEach(detail => {
         pdf.setFont('helvetica', 'bold');
-        pdf.text(detail.label, 50, yPos);
+        pdf.text(detail.label, 80, yPos);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(detail.value, 75, yPos);
+        pdf.text(detail.value, 105, yPos);
         yPos += 8;
       });
       
@@ -139,11 +155,18 @@ const GoodsReceiptLabel = ({ goodsReceipt, onPrint, onClose }) => {
         <div className="label-preview-body">
           <div className="label-preview-container">
             <div className="label-preview">
-              <div className="label-title">WARENANNAHME</div>
+              <div className="label-title">WARENANNAHME BARCODE VERSION v2</div>
               
               <div className="label-content">
-                <div className="label-qr">
-                  {qrCodeUrl && <img src={qrCodeUrl} alt="QR Code" />}
+                <div className="label-barcode">
+                  {barcodeUrl ? (
+                    <img src={barcodeUrl} alt="EAN128 Barcode" />
+                  ) : (
+                    <div className="barcode-fallback">
+                      <div className="barcode-text">WA-{goodsReceipt.kWarenannahme}</div>
+                      <div className="barcode-info">Barcode wird generiert...</div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="label-info">

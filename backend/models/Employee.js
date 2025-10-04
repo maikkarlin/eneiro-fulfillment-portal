@@ -46,10 +46,14 @@ class Employee {
       // PRAGMATISCHER TEST-BYPASS für bekannte Test-Accounts
       const testAccounts = {
         'mkarlin': 'maik17und4',
-        'kheinz': 'test789', 
-        'testuser2025': 'test123',
-        'bbrandt': 'brigitte123',  // Beispiel
-        'jgries': 'jasmin123'      // Beispiel
+        'ööztas': 'Eneiro2025!',
+        'pneubert': 'Eneiro2025!',
+        'esansar': 'Eneiro2025!',
+        'psansar': 'Eneiro2025!',
+        'rtodireanu': 'Eneiro2025!',
+        'ojohn': 'Eneiro2025!',
+        'kwenzel': 'Eneiro2025!',
+        'tgilberg': 'Eneiro2025!'
       };
       
       // Prüfe ob es ein bekannter Test-Account ist

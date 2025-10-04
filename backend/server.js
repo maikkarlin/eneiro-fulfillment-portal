@@ -28,6 +28,8 @@ const corsOptions = {
       'http://localhost:3001', 
       'https://ffn.eneiro.io',
       'http://ffn.eneiro.io',
+  'https://portal.infra-gw.io',  // NEU
+  'http://portal.infra-gw.io',   // NEU
     ];
     
     if (process.env.NODE_ENV !== 'production' && !origin) {
@@ -103,6 +105,7 @@ try {
     console.log('✅ Documents Route registriert');
   }
   
+  app.use('/api/photos', require('./routes/photos'));
   console.log('✅ Alle verfügbaren Routes registriert');
 } catch (error) {
   console.error('❌ Fehler beim Laden der Routes:', error);

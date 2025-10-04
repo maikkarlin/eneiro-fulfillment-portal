@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.js - MIT DOKUMENT-FEATURES ERWEITERT
+// frontend/src/components/Dashboard.js - MIT REPARIERTEN URLs
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
@@ -28,7 +28,7 @@ import GoodsReceiptForm from './GoodsReceiptForm';
 import GoodsReceiptDetailsModal from './GoodsReceiptDetailsModal';
 import GoodsReceiptLabel from './GoodsReceiptLabel';
 import CustomerGoodsReceipts from './CustomerGoodsReceipts';
-import DocumentsDisplay from './DocumentsDisplay'; // ✅ NEU: Import DocumentsDisplay
+import DocumentsDisplay from './DocumentsDisplay';
 import Blocklager from './Blocklager';
 import ItemizedRecords from './ItemizedRecords';
 import './Dashboard.css';
@@ -179,7 +179,6 @@ const Dashboard = ({ user, onLogout }) => {
 
   return (
     <div className="dashboard-container">
-      {/* Header */}
       <header className="dashboard-header">
         <div className="header-content">
           <div className="header-left">
@@ -221,9 +220,7 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
       </header>
 
-      {/* Layout */}
       <div className="dashboard-layout">
-        {/* Sidebar */}
         <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
           <nav className="nav-menu">
             {getNavigationItems().map((item) => (
@@ -239,13 +236,11 @@ const Dashboard = ({ user, onLogout }) => {
           </nav>
         </aside>
 
-        {/* Main Content */}
         <main className="dashboard-main">
           {renderContent()}
         </main>
       </div>
 
-      {/* Modals */}
       {photoModal && (
         <PhotoModal 
           photoPath={photoModal} 
@@ -279,24 +274,21 @@ const Dashboard = ({ user, onLogout }) => {
   );
 };
 
-// ===== REPARIERTE FOTO-MODAL KOMPONENTE =====
+// ✅ REPARIERTE FOTO-MODAL KOMPONENTE - NUR RELATIVE URLs
 const PhotoModal = ({ photoPath, onClose }) => {
   console.log('🖼️ PhotoModal - Foto-Pfad:', photoPath);
   
-  // Korrekte URL konstruieren
   const getPhotoUrl = (path) => {
     if (!path) return null;
     
-    // Backslashes durch Slashes ersetzen
     const cleanPath = path.replace(/\\/g, '/');
     
-    // Wenn bereits mit "uploads/" beginnt, direkt verwenden
+    // ✅ GEÄNDERT: Relative URLs statt localhost:5000
     if (cleanPath.startsWith('uploads/')) {
-      return `http://localhost:5000/${cleanPath}`;
+      return `/${cleanPath}`;
     }
     
-    // Ansonsten "uploads/warenannahme/" voranstellen
-    return `http://localhost:5000/uploads/warenannahme/${cleanPath}`;
+    return `/uploads/warenannahme/${cleanPath}`;
   };
   
   const photoUrl = getPhotoUrl(photoPath);
@@ -344,7 +336,6 @@ const PhotoModal = ({ photoPath, onClose }) => {
   );
 };
 
-// Mitarbeiter-Komponenten
 const EmployeeOverview = ({ data, onRefresh }) => (
   <div>
     <div className="section-header">
@@ -433,17 +424,16 @@ const EmployeeOverview = ({ data, onRefresh }) => (
   </div>
 );
 
-// ✅ ERWEITERTE Warenannahmen-Liste MIT DOKUMENT-FEATURES
 const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLabelPrint }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('alle');
   const [filteredData, setFilteredData] = useState([]);
-  const [documentCounts, setDocumentCounts] = useState({}); // ✅ NEU: State für Dokument-Anzahlen
+  const [documentCounts, setDocumentCounts] = useState({});
 
-  // ✅ NEU: Funktion zum Laden der Dokument-Anzahl für eine Warenannahme
+  // ✅ GEÄNDERT: Relative URL statt localhost:5000
   const loadDocumentCount = async (warenannahmeId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/documents/warenannahme/${warenannahmeId}`, {
+      const response = await fetch(`/api/documents/warenannahme/${warenannahmeId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -460,7 +450,6 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
     }
   };
 
-  // ✅ NEU: Effect zum Laden aller Dokument-Anzahlen
   useEffect(() => {
     const loadAllDocumentCounts = async () => {
       if (!data.list || !Array.isArray(data.list)) return;
@@ -490,13 +479,16 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
 
     let filtered = [...data.list];
 
-    if (searchTerm) {
-      filtered = filtered.filter(item => 
-        (item.kWarenannahme && item.kWarenannahme.toString().includes(searchTerm)) ||
-        (item.KundenFirma && item.KundenFirma.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.cTransporteur && item.cTransporteur.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-    }
+if (searchTerm) {
+  const cleanSearchTerm = searchTerm.toUpperCase().replace('WA-', '');
+  
+  filtered = filtered.filter(item => 
+    (item.kWarenannahme && item.kWarenannahme.toString().includes(cleanSearchTerm)) ||
+    (item.kWarenannahme && `WA-${item.kWarenannahme}`.includes(searchTerm.toUpperCase())) ||
+    (item.KundenFirma && item.KundenFirma.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.cTransporteur && item.cTransporteur.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+}
 
     if (statusFilter !== 'alle') {
       filtered = filtered.filter(item => item.cStatus === statusFilter);
@@ -529,7 +521,6 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
         <button onClick={onRefresh} className="refresh-button">🔄 Aktualisieren</button>
       </div>
       
-      {/* Such- und Filterbereich */}
       <div className="search-filter-container" style={{
         display: 'flex',
         gap: '16px',
@@ -608,14 +599,14 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
                 <th>Transporteur</th>
                 <th>Packstücke</th>
                 <th>Status</th>
-                <th>Dokumente</th> {/* ✅ NEU: Dokumente Spalte */}
+                <th>Dokumente</th>
                 <th>Foto</th>
                 <th>Aktionen</th>
               </tr>
             </thead>
             <tbody>
               {filteredData.map((item) => {
-                const docCount = documentCounts[item.kWarenannahme] || 0; // ✅ NEU: Dokument-Anzahl abrufen
+                const docCount = documentCounts[item.kWarenannahme] || 0;
                 
                 return (
                   <tr key={item.kWarenannahme}>
@@ -631,7 +622,6 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
                         {item.cStatus}
                       </span>
                     </td>
-                    {/* ✅ NEU: Dokumente Spalte mit Counter */}
                     <td>
                       {docCount > 0 ? (
                         <span className="documents-count-badge">
@@ -697,7 +687,6 @@ const GoodsReceiptList = ({ data, onRefresh, onPhotoClick, onDetailsClick, onLab
   );
 };
 
-// Kunden-Komponenten
 const CustomerOverview = ({ data, onRefresh }) => {
   if (!data.kpis) {
     return (
